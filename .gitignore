@@ -1,3 +1,6 @@
-#globs
+# dirs
+dist/
+
+# globs
 **/.DS_Store
 **/node_modules/
