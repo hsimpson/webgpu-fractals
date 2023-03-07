@@ -1,0 +1,12 @@
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+/* Custom css */
+@layer base {
+  a {
+    @apply underline text-blue-600 hover:text-blue-800 visited:text-purple-600;
+  }
+}
