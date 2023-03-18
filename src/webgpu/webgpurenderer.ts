@@ -1,4 +1,6 @@
 import { WebGPURenderContext } from './webgpucontext';
+import { WebGPURenderPipeline } from './webgpurenderpipeline';
+import { createShaderModuleFromPath } from './webgpushader';
 
 export class WebGPURenderer {
   private readonly canvas: HTMLCanvasElement;
@@ -13,6 +15,7 @@ export class WebGPURenderer {
   private depthTarget: GPUTexture;
   private depthTargetView: GPUTextureView;
   private currentTime = 0;
+  private renderPipeline: GPURenderPipeline;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -89,10 +92,20 @@ export class WebGPURenderer {
     this.depthTargetView = this.depthTarget.createView();
   }
 
+  private async initializeResources() {
+    const webgpuRenderPipeline = new WebGPURenderPipeline(this.context.device, {
+      sampleCount: this.sampleCount,
+      vertexModule: await createShaderModuleFromPath('./shaders/basic.vert.wgsl', this.context.device),
+      fragmentModule: await createShaderModuleFromPath('./shaders/basic.frag.wgsl', this.context.device),
+      fragmentTargets: [{ format: this.context.presentationFormat }],
+    });
+    this.renderPipeline = webgpuRenderPipeline.create();
+  }
+
   public async start() {
     await this.initialize();
     this.reCreateRenderTargets();
-    // await this.initializeResources();
+    await this.initializeResources();
     this.currentTime = performance.now();
     this.update();
   }
@@ -113,38 +126,33 @@ export class WebGPURenderer {
   }
 
   private renderPass() {
-    const colorAttachment: GPURenderPassColorAttachment = {
-      view: this.context.presentationContext.getCurrentTexture().createView(),
-      clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
-      loadOp: 'clear',
-      storeOp: 'store',
-    };
-
-    if (this.sampleCount > 1) {
-      colorAttachment.view = this.renderTargetView;
-      colorAttachment.resolveTarget = this.context.presentationContext.getCurrentTexture().createView();
-    }
-
-    const depthAttachment: GPURenderPassDepthStencilAttachment = {
-      view: this.depthTargetView,
-
-      depthLoadOp: 'clear',
-      depthClearValue: 1.0,
-      depthStoreOp: 'store',
-
-      stencilLoadOp: 'clear',
-      stencilClearValue: 0,
-      stencilStoreOp: 'store',
-    };
-
     const renderPassDesc: GPURenderPassDescriptor = {
-      colorAttachments: [colorAttachment],
-      depthStencilAttachment: depthAttachment,
+      colorAttachments: [
+        {
+          view: this.sampleCount > 1 ? this.renderTargetView : this.context.presentationContext.getCurrentTexture().createView(),
+          resolveTarget: this.sampleCount > 1 ? this.context.presentationContext.getCurrentTexture().createView() : undefined,
+          clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
+          loadOp: 'clear',
+          storeOp: 'discard',
+        },
+      ],
+      // depthStencilAttachment: {
+      //   view: this.depthTargetView,
+
+      //   depthLoadOp: 'clear',
+      //   depthClearValue: 1.0,
+      //   depthStoreOp: 'store',
+
+      //   stencilLoadOp: 'clear',
+      //   stencilClearValue: 0,
+      //   stencilStoreOp: 'store',
+      // },
     };
 
     const commandEncoder = this.context.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass(renderPassDesc);
-
+    passEncoder.setPipeline(this.renderPipeline);
+    passEncoder.draw(6, 1, 0, 0);
     passEncoder.end();
 
     this.context.queue.submit([commandEncoder.finish()]);
