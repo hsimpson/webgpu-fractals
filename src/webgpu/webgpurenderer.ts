@@ -17,6 +17,8 @@ export class WebGPURenderer {
   private currentTime = 0;
   private renderPipeline: GPURenderPipeline;
 
+  private resolution: Vec2 = [0, 0];
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
   }
@@ -24,8 +26,11 @@ export class WebGPURenderer {
   private async initialize() {
     await this.context.initialize(this.canvas);
 
-    const width = this.canvas.clientWidth * window.devicePixelRatio;
-    const height = this.canvas.clientHeight * window.devicePixelRatio;
+    this.resolution = [this.canvas.clientWidth, this.canvas.clientHeight];
+
+    const width = this.resolution[0] * window.devicePixelRatio;
+    const height = this.resolution[1] * window.devicePixelRatio;
+
     this.presentationSize = {
       width,
       height,
@@ -46,14 +51,18 @@ export class WebGPURenderer {
         return;
       }
 
-      this.resize(entries[0].contentRect.width * window.devicePixelRatio, entries[0].contentRect.height * window.devicePixelRatio);
+      this.resize([entries[0].contentRect.width, entries[0].contentRect.height]);
     });
     resizeObserver.observe(this.canvas);
   }
 
-  private resize(width: number, height: number) {
-    if (width !== this.presentationSize.width || height !== this.presentationSize.height) {
-      // console.log(`Resizing canvas to ${width}x${height}`);
+  private resize(newResolution: Vec2) {
+    if (!vec2.equals(this.resolution, newResolution)) {
+      this.resolution = newResolution;
+
+      const width = this.resolution[0] * window.devicePixelRatio;
+      const height = this.resolution[1] * window.devicePixelRatio;
+
       this.canvas.width = width;
       this.canvas.height = height;
       this.presentationSize = {
