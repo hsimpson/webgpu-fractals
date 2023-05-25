@@ -1,3 +1,4 @@
+import { Vec2, vec2 } from 'wgpu-matrix';
 import { WebGPURenderContext } from './webgpucontext';
 import { WebGPURenderPipeline } from './webgpurenderpipeline';
 import { createShaderModuleFromPath } from './webgpushader';
