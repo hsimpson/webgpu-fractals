@@ -39,15 +39,38 @@ UVs:
      0,1                        1,1
 
 */
+// var<private> uv = array<vec2<f32>, 6>(
+//     vec2(1.0, 0.0), // top right
+//     vec2(1.0, 1.0), // bottom right
+//     vec2(0.0, 1.0), // bottom left
+//     vec2(1.0, 0.0), // top right
+//     vec2(0.0, 1.0), // bottom left
+//     vec2(0.0, 0.0), // top left
+// );
 
 
+/*
+UVs:
+
+     0,1 --------------------->  1,1
+      |  **********************
+      |  *                 *  *
+      |  *              *     *
+      |  *           *        *
+      |  *        *           *
+      |  *     *              *
+      |  *  *                 *
+      ↓  **********************
+     0,0                        1,0
+
+*/
 var<private> uv = array<vec2<f32>, 6>(
-    vec2(1.0, 0.0), // top right
-    vec2(1.0, 1.0), // bottom right
-    vec2(0.0, 1.0), // bottom left
-    vec2(1.0, 0.0), // top right
-    vec2(0.0, 1.0), // bottom left
-    vec2(0.0, 0.0), // top left
+    vec2(1.0, 1.0), // top right
+    vec2(1.0, 0.0), // bottom right
+    vec2(0.0, 0.0), // bottom left
+    vec2(1.0, 1.0), // top right
+    vec2(0.0, 0.0), // bottom left
+    vec2(0.0, 1.0), // top left
 );
 
 
