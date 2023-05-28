@@ -4,6 +4,7 @@ struct FragmentOutput {
 
 struct UBOParams {
    resolution: vec2<u32>,
+   cameraPosition: vec3<f32>,
 }
 
 @group(0) @binding(0) var<uniform> params: UBOParams;
@@ -84,8 +85,8 @@ fn main(@builtin(position) coord: vec4<f32> ) -> FragmentOutput {
     uv.x *= iResolution.x / iResolution.y; // [-0.5 * aspectRatio, 0.5 * aspectRatio]
     uv.y = -uv.y; // flip y axis
 
-    var cameraPosition = vec3<f32>(0.0, 0.0, 5.0);
-    var rayOrigin = cameraPosition;
+    // var cameraPosition = vec3<f32>(0.0, 0.0, 5.0);
+    var rayOrigin = params.cameraPosition;
     var rayDirection = normalize(vec3<f32>(uv, -1.0));
     var backgroundColor = vec3<f32>(0.4);
 

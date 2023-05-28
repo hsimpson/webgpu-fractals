@@ -1,4 +1,5 @@
-import { Vec2, vec2 } from 'wgpu-matrix';
+import { Vec2, Vec3, vec2 } from 'wgpu-matrix';
+import { Camera } from './camera';
 import { createBuffer } from './helpers';
 import { WebGPUBindGroup } from './webgpubindgroup';
 import { WebGPUBindGroupLayout } from './webgpubindgrouplayout';
@@ -8,6 +9,7 @@ import { WebGPURenderPipeline } from './webgpurenderpipeline';
 
 type UniformParams = {
   resolution: Vec2;
+  cameraPosition: Vec3;
 };
 export class WebGPURenderer {
   private readonly canvas: HTMLCanvasElement;
@@ -25,14 +27,18 @@ export class WebGPURenderer {
   private renderPipeline: WebGPURenderPipeline;
   // private computePipeline: GPUComputePipeline;
 
-  private uniformParams: UniformParams = {
-    resolution: [0, 0],
-  };
+  private uniformParams: UniformParams;
   private uniformParamsBuffer: GPUBuffer;
   private uniformParamsGroup: WebGPUBindGroup;
+  private camera: Camera;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    this.camera = new Camera(canvas, [0, 0, 5], [0, 0, 0]);
+    this.uniformParams = {
+      resolution: [0, 0],
+      cameraPosition: this.camera.position,
+    };
   }
 
   private async initialize() {
@@ -114,8 +120,9 @@ export class WebGPURenderer {
   }
 
   private getUniformParamsArray(): ArrayBuffer {
-    const uniformParamsArray = new ArrayBuffer(8);
+    const uniformParamsArray = new ArrayBuffer(32);
     new Uint32Array(uniformParamsArray, 0, 2).set(this.uniformParams.resolution);
+    new Float32Array(uniformParamsArray, 16, 3).set(this.uniformParams.cameraPosition);
     return uniformParamsArray;
   }
 
@@ -187,6 +194,8 @@ export class WebGPURenderer {
     const beginFrameTime = performance.now();
     const duration = beginFrameTime - this.currentTime;
     this.currentTime = beginFrameTime;
+
+    this.uniformParams.cameraPosition = this.camera.position;
 
     this.render(duration);
     window.requestAnimationFrame(this.update);
