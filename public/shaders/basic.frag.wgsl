@@ -8,6 +8,13 @@ struct UBOParams {
 
 @group(0) @binding(0) var<uniform> params: UBOParams;
 
+
+var<private> MAX_MARCHING_STEPS: i32 = 255;
+var<private> MIN_DIST: f32 = 0.0;
+var<private> MAX_DIST: f32 = 100.0;
+var<private> PRECISION: f32 = 0.001;
+
+
 /*
  * Signed distance functions for a sphere
  * @param p: point in space
@@ -29,69 +36,35 @@ fn mapTheWorld(p: vec3<f32>) -> f32 {
     // assume that the sphere is centered at the origin
     // and has unit radius
     var sphere1 = sdfSphere(p, vec3<f32>(0.0, 0.0, 0.0), 1.0);
-    var sphere2 = sdfSphere(p, vec3<f32>(-0.8, 0.4, -1.65), 1.0);
+    var sphere2 = sdfSphere(p, vec3<f32>(0.8, 0.4, 1.65), 1.0);
 
     return opSubtration(sphere2, sphere1);
     // return min(sphere1, sphere2);
     // return sphere1;
 }
 
-fn calculateNormal(p: vec3<f32>) -> vec3<f32> {
-    const smallStep = vec3<f32>(0.001, 0.0, 0.0);
-    var normal = vec3<f32>(
-        mapTheWorld(p + smallStep.xyy) - mapTheWorld(p - smallStep.xyy),
-        mapTheWorld(p + smallStep.yxy) - mapTheWorld(p - smallStep.yxy),
-        mapTheWorld(p + smallStep.yyx) - mapTheWorld(p - smallStep.yyx)
+fn calcNormal(p: vec3<f32>) -> vec3<f32> {
+    var e = vec2<f32>(1.0, -1.0) * 0.0005; // epsilon
+    return normalize(
+        e.xyy * mapTheWorld(p + e.xyy) +
+        e.yyx * mapTheWorld(p + e.yyx) +
+        e.yxy * mapTheWorld(p + e.yxy) +
+        e.xxx * mapTheWorld(p + e.xxx)
     );
-
-    return normalize(normal);
 }
 
-fn rayMarch(rayOrigin: vec3<f32>, rayDirection: vec3<f32>) -> vec3<f32> {
-    var totalDistanceTraveled: f32 = 0.0;
-    const numberOfSteps: i32 = 32;
-    const minimumHitDistance: f32 = 0.001;
-    const maximumDistance: f32 = 1000.0;
+fn rayMarch(rayOrigin: vec3<f32>, rayDirection: vec3<f32>, start: f32, end: f32) -> f32 {
+    var depth = start;
 
-    // For now, hard-code the light's position in our scene
-    const lightPosition = vec3<f32>(2.0, -5.0, 3.0);
-
-    for(var i = 0; i < numberOfSteps; i++) {
-        // Calculate our current position along the ray
-        var currentPosition = rayOrigin + totalDistanceTraveled * rayDirection;
-
-        var distanceToSphere = mapTheWorld(currentPosition);
-
-        if (distanceToSphere < minimumHitDistance) { // hit
-            var normal = calculateNormal(currentPosition);
-
-            // Calculate the unit direction vector that points from
-            // the point of intersection to the light source
-            var directionToLight = normalize(currentPosition - lightPosition);
-
-            var diffuseIntensity = max(0.2, dot(normal, directionToLight));
-            
-            // Remember, each component of the normal will be in
-            // the range -1..1, so for the purposes of visualizing
-            // it as an RGB color, let's remap it to the range
-            // 0..1
-            //return normal * 0.5 + 0.5;
-
-            return vec3<f32>(1.0, 0.1, 0.1) * diffuseIntensity;
-            // return vec3<f32>(1.0, 0.1, 0.1);
-        }
-
-        if (totalDistanceTraveled > maximumDistance) { // miss
+    for(var i = 0; i < MAX_MARCHING_STEPS; i++) {
+        var p = rayOrigin + depth * rayDirection;
+        var dist = mapTheWorld(p);
+        depth += dist;
+        if(dist < PRECISION || depth > end) {
             break;
         }
-
-        // accumulate the distance traveled thus far
-        totalDistanceTraveled += distanceToSphere;
     }
-
-    // If we get here, we didn't hit anything so just
-    // return a background color (black)
-    return vec3<f32>(0.0);
+    return depth;
 }
 
 @fragment
@@ -105,13 +78,36 @@ fn main(@builtin(position) coord: vec4<f32> ) -> FragmentOutput {
     var iResolution = vec2<f32>(params.resolution);
    
     // correction of uv coordinates depending on resolutions
-    var uv = (fragCoord-.5*iResolution.xy)/iResolution.y;
+    // var uv = (fragCoord-.5*iResolution.xy)/iResolution.y;
+    var uv = fragCoord / iResolution.xy; // [0, 1]
+    uv -= 0.5; // [-0.5, 0.5]
+    uv.x *= iResolution.x / iResolution.y; // [-0.5 * aspectRatio, 0.5 * aspectRatio]
+    uv.y = -uv.y; // flip y axis
 
-    var cameraPosition = vec3<f32>(0.0, 0.0, -5.0);
+    var cameraPosition = vec3<f32>(0.0, 0.0, 5.0);
     var rayOrigin = cameraPosition;
-    var rayDirection = normalize(vec3<f32>(uv, 1.0));
+    var rayDirection = normalize(vec3<f32>(uv, -1.0));
+    var backgroundColor = vec3<f32>(0.4);
 
-    var color = rayMarch(rayOrigin, rayDirection);
+    var color = vec3<f32>(0.0, 0.0, 0.0);
+
+    var distance = rayMarch(rayOrigin, rayDirection, MIN_DIST, MAX_DIST);
+    if(distance > MAX_DIST)  {
+        // no hit
+        color = backgroundColor;
+    } else {
+        // hit
+        var hitPoint = rayOrigin + rayDirection * distance;
+        var normal = calcNormal(hitPoint);
+        var lightPosition = vec3<f32>(2.0, 2.0, 4.0);
+        var directionToLight = normalize(lightPosition-hitPoint);
+
+        // Calculate diffuse reflection by taking the dot product of 
+        // the normal and the light direction.
+        var diffuseIntensity = clamp(dot(normal, directionToLight), 0.0, 1.0);
+
+        color = vec3<f32>(diffuseIntensity) * vec3<f32>(1.0, 0.0, 0.0);
+    }
 
     output.fragColor = vec4(color, 1.0);
     return output;

@@ -228,7 +228,7 @@ export class WebGPURenderer {
     const passEncoder = commandEncoder.beginRenderPass(renderPassDesc);
     passEncoder.setPipeline(this.renderPipeline.pipeline);
     passEncoder.setBindGroup(0, this.uniformParamsGroup.bindGroup);
-    passEncoder.draw(6, 1, 0, 0);
+    passEncoder.draw(3, 1, 0, 0); // only 1 triangle
     passEncoder.end();
 
     this.context.queue.submit([commandEncoder.finish()]);
