@@ -1,30 +1,40 @@
-type WebGPURenderPipelineOptions = {
+import { WebGPUResourceOptions } from './types';
+import { WebGPUPipelineLayout } from './webgpupipelinelayout';
+import { createShaderModuleFromPath } from './webgpushader';
+
+type WebGPURenderPipelineOptions = WebGPUResourceOptions & {
   sampleCount: number;
-  vertexModule: GPUShaderModule;
-  fragmentModule: GPUShaderModule;
+  vertexShaderFile: string;
+  fragmentShaderFile: string;
   fragmentTargets: GPUColorTargetState[];
+  pipelineLayout?: WebGPUPipelineLayout;
 };
 
 export class WebGPURenderPipeline {
-  constructor(private readonly device: GPUDevice, private readonly options: WebGPURenderPipelineOptions) {}
+  private renderPipeline: GPURenderPipeline;
 
-  public create() {
-    return this.device.createRenderPipeline({
-      layout: 'auto',
+  public get pipeline() {
+    return this.renderPipeline;
+  }
+
+  public async create(options: WebGPURenderPipelineOptions) {
+    this.renderPipeline = options.device.createRenderPipeline({
+      label: options.label,
+      layout: options.pipelineLayout?.layout ?? 'auto',
       vertex: {
-        module: this.options.vertexModule,
+        module: await createShaderModuleFromPath(options.vertexShaderFile, options.device),
         entryPoint: 'main',
       },
       fragment: {
-        module: this.options.fragmentModule,
+        module: await createShaderModuleFromPath(options.fragmentShaderFile, options.device),
         entryPoint: 'main',
-        targets: this.options.fragmentTargets,
+        targets: options.fragmentTargets,
       },
       primitive: {
         topology: 'triangle-list',
       },
       multisample: {
-        count: this.options.sampleCount,
+        count: options.sampleCount,
       },
     });
   }

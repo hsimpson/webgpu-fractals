@@ -2,6 +2,12 @@ struct FragmentOutput {
     @location(0) fragColor: vec4<f32>,
 }
 
+struct UBOParams {
+   resolution: vec2<u32>,
+}
+
+@group(0) @binding(0) var<uniform> params: UBOParams;
+
 /*
  * Signed distance functions for a sphere
  * @param p: point in space
@@ -19,11 +25,15 @@ fn opSubtration(d1: f32, d2: f32) -> f32 {
 fn mapTheWorld(p: vec3<f32>) -> f32 {
 
     // var displacement = sin(5.0 * p.x) * sin(5.0 * p.y) * sin(5.0 * p.z) * 0.25;
+    
+    // assume that the sphere is centered at the origin
+    // and has unit radius
     var sphere1 = sdfSphere(p, vec3<f32>(0.0, 0.0, 0.0), 1.0);
-    var sphere2 = sdfSphere(p, vec3<f32>(0.4, 0.4, -1.75), 1.0);
+    var sphere2 = sdfSphere(p, vec3<f32>(-0.8, 0.4, -1.65), 1.0);
 
     return opSubtration(sphere2, sphere1);
     // return min(sphere1, sphere2);
+    // return sphere1;
 }
 
 fn calculateNormal(p: vec3<f32>) -> vec3<f32> {
@@ -50,8 +60,6 @@ fn rayMarch(rayOrigin: vec3<f32>, rayDirection: vec3<f32>) -> vec3<f32> {
         // Calculate our current position along the ray
         var currentPosition = rayOrigin + totalDistanceTraveled * rayDirection;
 
-        // assume that the sphere is centered at the origin
-        // and has unit radius
         var distanceToSphere = mapTheWorld(currentPosition);
 
         if (distanceToSphere < minimumHitDistance) { // hit
@@ -70,6 +78,7 @@ fn rayMarch(rayOrigin: vec3<f32>, rayDirection: vec3<f32>) -> vec3<f32> {
             //return normal * 0.5 + 0.5;
 
             return vec3<f32>(1.0, 0.1, 0.1) * diffuseIntensity;
+            // return vec3<f32>(1.0, 0.1, 0.1);
         }
 
         if (totalDistanceTraveled > maximumDistance) { // miss
@@ -86,20 +95,24 @@ fn rayMarch(rayOrigin: vec3<f32>, rayDirection: vec3<f32>) -> vec3<f32> {
 }
 
 @fragment
-fn main(@location(0) fragUV : vec2<f32>) -> FragmentOutput {
+fn main(@builtin(position) coord: vec4<f32> ) -> FragmentOutput {
     var output : FragmentOutput;
-    // convert from [0, 1] to [-1, 1]
-    var uv = fragUV * 2.0 - 1.0;
 
+    // see https://www.w3.org/TR/WGSL/#builtin-values
+    // coord is the interpolated position of the current fragment
+    // coord.xy is the pixel coordinate of the current fragment (0,0 top left and bottom right is viewport width, viewport height)
+    var fragCoord = coord.xy;
+    var iResolution = vec2<f32>(params.resolution);
+   
+    // correction of uv coordinates depending on resolutions
+    var uv = (fragCoord-.5*iResolution.xy)/iResolution.y;
 
     var cameraPosition = vec3<f32>(0.0, 0.0, -5.0);
     var rayOrigin = cameraPosition;
-    var rayDistance = vec3<f32>(uv, 1.0);
+    var rayDirection = normalize(vec3<f32>(uv, 1.0));
 
-    var color = rayMarch(rayOrigin, rayDistance);
+    var color = rayMarch(rayOrigin, rayDirection);
 
-
-    // output.fragColor = vec4(fragUV.x, fragUV.y, 0.0, 1.0);
     output.fragColor = vec4(color, 1.0);
     return output;
 }

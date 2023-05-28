@@ -1,8 +1,14 @@
 import { Vec2, vec2 } from 'wgpu-matrix';
+import { createBuffer } from './helpers';
+import { WebGPUBindGroup } from './webgpubindgroup';
+import { WebGPUBindGroupLayout } from './webgpubindgrouplayout';
 import { WebGPURenderContext } from './webgpucontext';
+import { WebGPUPipelineLayout } from './webgpupipelinelayout';
 import { WebGPURenderPipeline } from './webgpurenderpipeline';
-import { createShaderModuleFromPath } from './webgpushader';
 
+type UniformParams = {
+  resolution: Vec2;
+};
 export class WebGPURenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly context = new WebGPURenderContext();
@@ -16,9 +22,14 @@ export class WebGPURenderer {
   private depthTarget: GPUTexture;
   private depthTargetView: GPUTextureView;
   private currentTime = 0;
-  private renderPipeline: GPURenderPipeline;
+  private renderPipeline: WebGPURenderPipeline;
+  // private computePipeline: GPUComputePipeline;
 
-  private resolution: Vec2 = [0, 0];
+  private uniformParams: UniformParams = {
+    resolution: [0, 0],
+  };
+  private uniformParamsBuffer: GPUBuffer;
+  private uniformParamsGroup: WebGPUBindGroup;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -27,10 +38,10 @@ export class WebGPURenderer {
   private async initialize() {
     await this.context.initialize(this.canvas);
 
-    this.resolution = [this.canvas.clientWidth, this.canvas.clientHeight];
+    this.uniformParams.resolution = [this.canvas.clientWidth, this.canvas.clientHeight];
 
-    const width = this.resolution[0] * window.devicePixelRatio;
-    const height = this.resolution[1] * window.devicePixelRatio;
+    const width = this.uniformParams.resolution[0] * window.devicePixelRatio;
+    const height = this.uniformParams.resolution[1] * window.devicePixelRatio;
 
     this.presentationSize = {
       width,
@@ -58,11 +69,11 @@ export class WebGPURenderer {
   }
 
   private resize(newResolution: Vec2) {
-    if (!vec2.equals(this.resolution, newResolution)) {
-      this.resolution = newResolution;
+    if (!vec2.equals(this.uniformParams.resolution, newResolution)) {
+      this.uniformParams.resolution = newResolution;
 
-      const width = this.resolution[0] * window.devicePixelRatio;
-      const height = this.resolution[1] * window.devicePixelRatio;
+      const width = this.uniformParams.resolution[0] * window.devicePixelRatio;
+      const height = this.uniformParams.resolution[1] * window.devicePixelRatio;
 
       this.canvas.width = width;
       this.canvas.height = height;
@@ -102,14 +113,66 @@ export class WebGPURenderer {
     this.depthTargetView = this.depthTarget.createView();
   }
 
+  private getUniformParamsArray(): ArrayBuffer {
+    const uniformParamsArray = new ArrayBuffer(8);
+    new Uint32Array(uniformParamsArray, 0, 2).set(this.uniformParams.resolution);
+    return uniformParamsArray;
+  }
+
   private async initializeResources() {
-    const webgpuRenderPipeline = new WebGPURenderPipeline(this.context.device, {
-      sampleCount: this.sampleCount,
-      vertexModule: await createShaderModuleFromPath('./shaders/basic.vert.wgsl', this.context.device),
-      fragmentModule: await createShaderModuleFromPath('./shaders/basic.frag.wgsl', this.context.device),
-      fragmentTargets: [{ format: this.context.presentationFormat }],
+    this.uniformParamsBuffer = createBuffer(
+      this.getUniformParamsArray(),
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      this.context.device,
+    );
+
+    const bindGroupLayout = new WebGPUBindGroupLayout();
+    bindGroupLayout.create({
+      device: this.context.device,
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: {
+            type: 'uniform',
+          },
+        },
+      ],
     });
-    this.renderPipeline = webgpuRenderPipeline.create();
+
+    this.uniformParamsGroup = new WebGPUBindGroup();
+    this.uniformParamsGroup.create({
+      device: this.context.device,
+      bindGroupLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: {
+            buffer: this.uniformParamsBuffer,
+          },
+        },
+      ],
+    });
+
+    const pipelineLayout = new WebGPUPipelineLayout();
+    pipelineLayout.create({
+      device: this.context.device,
+      bindGroupLayouts: [bindGroupLayout],
+    });
+
+    this.renderPipeline = new WebGPURenderPipeline();
+    await this.renderPipeline.create({
+      device: this.context.device,
+      vertexShaderFile: './shaders/basic.vert.wgsl',
+      fragmentShaderFile: './shaders/basic.frag.wgsl',
+      fragmentTargets: [{ format: this.context.presentationFormat }],
+      sampleCount: this.sampleCount,
+      pipelineLayout,
+    });
+  }
+
+  private updateUniformBuffer() {
+    this.context.queue.writeBuffer(this.uniformParamsBuffer, 0, this.getUniformParamsArray());
   }
 
   public async start() {
@@ -132,10 +195,12 @@ export class WebGPURenderer {
   };
 
   private render(deltaTime: number) {
+    // this.computePass(deltaTime);
     this.renderPass();
   }
 
   private renderPass() {
+    this.updateUniformBuffer();
     const renderPassDesc: GPURenderPassDescriptor = {
       colorAttachments: [
         {
@@ -161,10 +226,20 @@ export class WebGPURenderer {
 
     const commandEncoder = this.context.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass(renderPassDesc);
-    passEncoder.setPipeline(this.renderPipeline);
+    passEncoder.setPipeline(this.renderPipeline.pipeline);
+    passEncoder.setBindGroup(0, this.uniformParamsGroup.bindGroup);
     passEncoder.draw(6, 1, 0, 0);
     passEncoder.end();
 
     this.context.queue.submit([commandEncoder.finish()]);
   }
+
+  // private computePass(deltaTime: number) {
+  //   const commandEncoder = this.context.device.createCommandEncoder();
+  //   const passEncoder = commandEncoder.beginComputePass();
+  //   passEncoder.setPipeline(this.computePipeline);
+
+  //   passEncoder.end();
+  //   this.context.queue.submit([commandEncoder.finish()]);
+  // }
 }
