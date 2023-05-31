@@ -1,0 +1,4 @@
+Coding Challenge 168: MandelBulb 3D Fractal https://www.youtube.com/watch?v=NJCiUVGiNyA
+Real 3D Mandelbulb: https://www.skytopia.com/project/fractal/mandelbulb.html
+SDF Sign distance function, etc. https://iquilezles.org/
+Ray Marching: https://michaelwalczyk.com/blog-ray-marching.html
