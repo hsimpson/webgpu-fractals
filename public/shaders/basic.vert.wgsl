@@ -1,22 +1,20 @@
-/*
-1 triangle for a full viewport quad
-via vertex index:
-
-      0                                1
-        ******************************
-        *             | clipped  *
-        *             |       *
-        *-------------    *
-        *             *
-        * clipped *
-        *     *
-        * *
-        *
-      2
-
-see: https://www.saschawillems.de/blog/2016/08/13/vulkan-tutorial-on-rendering-a-fullscreen-quad-without-buffers/
-
-*/
+// 1 triangle for a full viewport quad
+// via vertex index:
+// 
+//       0                                1
+//         ******************************
+//         *             | clipped  *
+//         *             |       *
+//         *-------------    *
+//         *             *
+//         * clipped *
+//         *     *
+//         * *
+//         *
+//       2
+// 
+// see: https://www.saschawillems.de/blog/2016/08/13/vulkan-tutorial-on-rendering-a-fullscreen-quad-without-buffers/
+ 
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,

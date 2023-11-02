@@ -9,8 +9,9 @@ import { WebGPURenderPipeline } from './webgpurenderpipeline';
 
 type UniformParams = {
   resolution: Vec2;
-  cameraPosition?: Vec3;
-  cameraRotation?: Vec2;
+  cameraPosition: Vec3;
+  cameraRotation: Vec2;
+  time: number;
 };
 
 export class WebGPURenderer {
@@ -41,6 +42,7 @@ export class WebGPURenderer {
       resolution: [0, 0],
       cameraPosition: this.camera.position,
       cameraRotation: this.camera.rotation,
+      time: 0,
     };
   }
 
@@ -127,6 +129,7 @@ export class WebGPURenderer {
     new Uint32Array(uniformParamsArray, 0, 2).set(this.uniformParams.resolution);
     new Float32Array(uniformParamsArray, 16, 3).set(this.uniformParams.cameraPosition);
     new Float32Array(uniformParamsArray, 32, 2).set(this.uniformParams.cameraRotation);
+    new Float32Array(uniformParamsArray, 40, 1).set([this.uniformParams.time]);
     return uniformParamsArray;
   }
 
@@ -201,6 +204,7 @@ export class WebGPURenderer {
 
     this.uniformParams.cameraPosition = this.camera.position;
     this.uniformParams.cameraRotation = this.camera.rotation;
+    this.uniformParams.time += duration / 1000;
 
     this.render(duration);
     window.requestAnimationFrame(this.update);
