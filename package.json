@@ -12,29 +12,29 @@
     "lint": "yarn check-types && yarn lint:ts"
   },
   "devDependencies": {
-    "@types/dom-webcodecs": "^0.1.7",
-    "@types/node": "^20.2.4",
-    "@types/react": "^18.2.7",
-    "@types/react-dom": "^18.2.4",
-    "@typescript-eslint/eslint-plugin": "^5.59.7",
-    "@typescript-eslint/parser": "^5.59.7",
-    "@vitejs/plugin-react": "^4.0.0",
-    "@webgpu/types": "^0.1.32",
-    "autoprefixer": "^10.4.14",
-    "eslint": "^8.41.0",
-    "eslint-config-prettier": "^8.8.0",
-    "eslint-plugin-prettier": "^4.2.1",
-    "eslint-plugin-react": "^7.32.2",
+    "@types/dom-webcodecs": "^0.1.9",
+    "@types/node": "^20.8.10",
+    "@types/react": "^18.2.34",
+    "@types/react-dom": "^18.2.14",
+    "@typescript-eslint/eslint-plugin": "^6.9.1",
+    "@typescript-eslint/parser": "^6.9.1",
+    "@vitejs/plugin-react": "^4.1.1",
+    "@webgpu/types": "^0.1.38",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.52.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "postcss": "^8.4.31",
-    "prettier": "^2.8.8",
-    "tailwindcss": "^3.3.2",
-    "typescript": "^5.0.4",
-    "vite": "^4.3.9"
+    "prettier": "^3.0.3",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "wgpu-matrix": "^2.3.0"
+    "wgpu-matrix": "^2.5.1"
   }
 }

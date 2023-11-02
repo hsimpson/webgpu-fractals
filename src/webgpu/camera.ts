@@ -3,7 +3,11 @@ import { Vec2, Vec3, vec2 } from 'wgpu-matrix';
 export class Camera {
   private currentMousePosition: Vec2 = vec2.create();
 
-  constructor(canvas: HTMLCanvasElement, private cameraPosition: Vec3, private cameraTarget: Vec3) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    private cameraPosition: Vec3,
+    private cameraRotation: Vec2,
+  ) {
     canvas.addEventListener('wheel', this.onMouseWheel);
     canvas.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('keydown', this.onKeyDown);
@@ -15,14 +19,14 @@ export class Camera {
   };
 
   private onMouseMove = (event: MouseEvent) => {
-    // const currentPos: Vec2 = [event.clientX, event.clientY];
-    // if (event.buttons === 1) {
-    //   const offset = vec2.subtract(currentPos, this.currentMousePosition);
-    //   vec2.scale(offset, 0.0025, offset);
-    //   vec2.add(this.cameraPosition, [offset[0], offset[1], 0], this.cameraPosition);
-    //   //console.log(cameraPosition);
-    // }
-    // this.currentMousePosition = currentPos;
+    const currentPos: Vec2 = [event.clientX, event.clientY];
+    if (event.buttons === 1) {
+      const offset = vec2.subtract(currentPos, this.currentMousePosition);
+      vec2.scale(offset, 0.005, offset);
+      vec2.add(this.cameraRotation, [-offset[1], -offset[0]], this.cameraRotation);
+      // console.log(cameraRotation);
+    }
+    this.currentMousePosition = currentPos;
   };
 
   private onKeyDown = (event: KeyboardEvent) => {
@@ -58,7 +62,11 @@ export class Camera {
     return this.cameraPosition;
   }
 
-  public get target(): Vec3 {
-    return this.cameraTarget;
+  // public get target(): Vec3 {
+  //   return this.cameraTarget;
+  // }
+
+  public get rotation(): Vec2 {
+    return this.cameraRotation;
   }
 }

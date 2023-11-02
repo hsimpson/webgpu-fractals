@@ -32,5 +32,6 @@
   "files.exclude": {
     "**/node_modules": true,
     "dist": true
-  }
+  },
+  "wgsl-analyzer.server.path": "~/.cargo/bin/wgsl_analyzer"
 }
