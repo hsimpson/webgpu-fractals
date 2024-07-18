@@ -19,7 +19,7 @@ export class Camera {
   };
 
   private onMouseMove = (event: MouseEvent) => {
-    const currentPos: Vec2 = [event.clientX, event.clientY];
+    const currentPos: Vec2 = new Float32Array([event.clientX, event.clientY]);
     if (event.buttons === 1) {
       const offset = vec2.subtract(currentPos, this.currentMousePosition);
       vec2.scale(offset, 0.005, offset);
@@ -54,7 +54,7 @@ export class Camera {
     this.cameraPosition[1] = y;
   };
 
-  private onKeyup = (event: KeyboardEvent) => {
+  private onKeyup = (_event: KeyboardEvent) => {
     //
   };
 

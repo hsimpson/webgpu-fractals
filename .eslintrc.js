@@ -24,7 +24,7 @@ module.exports = {
     '@typescript-eslint/no-floating-promises': 'error',
     '@typescript-eslint/no-explicit-any': 'warn', // FIXME: turn this into a warning some day
     '@typescript-eslint/no-shadow': 'error',
-    '@typescript-eslint/no-unused-vars': ['warn', { varsIgnorePattern: '[iI]gnored' }],
+    '@typescript-eslint/no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
     '@typescript-eslint/promise-function-async': 'error',
     '@typescript-eslint/require-await': 'error',
     'array-callback-return': 'error',

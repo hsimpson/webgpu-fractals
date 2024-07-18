@@ -37,9 +37,9 @@ export class WebGPURenderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.camera = new Camera(canvas, [0, 0, 5], [0, 0]);
+    this.camera = new Camera(canvas, new Float32Array([0, 0, 5]), new Float32Array([0, 0]));
     this.uniformParams = {
-      resolution: [0, 0],
+      resolution: new Float32Array([0, 0]),
       cameraPosition: this.camera.position,
       cameraRotation: this.camera.rotation,
       time: 0,
@@ -49,7 +49,7 @@ export class WebGPURenderer {
   private async initialize() {
     await this.context.initialize(this.canvas);
 
-    this.uniformParams.resolution = [this.canvas.clientWidth, this.canvas.clientHeight];
+    this.uniformParams.resolution = new Float32Array([this.canvas.clientWidth, this.canvas.clientHeight]);
 
     const width = this.uniformParams.resolution[0] * window.devicePixelRatio;
     const height = this.uniformParams.resolution[1] * window.devicePixelRatio;
@@ -74,7 +74,7 @@ export class WebGPURenderer {
         return;
       }
 
-      this.resize([entries[0].contentRect.width, entries[0].contentRect.height]);
+      this.resize(new Float32Array([entries[0].contentRect.width, entries[0].contentRect.height]));
     });
     resizeObserver.observe(this.canvas);
   }
@@ -209,10 +209,10 @@ export class WebGPURenderer {
     this.render(duration);
     window.requestAnimationFrame(this.update);
     const endFrameTime = performance.now();
-    const frameDuration = endFrameTime - beginFrameTime;
+    const _frameDuration = endFrameTime - beginFrameTime;
   };
 
-  private render(deltaTime: number) {
+  private render(_deltaTime: number) {
     // this.computePass(deltaTime);
     this.renderPass();
   }

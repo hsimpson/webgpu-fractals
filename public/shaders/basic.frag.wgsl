@@ -12,7 +12,8 @@ struct UBOParams {
 @group(0) @binding(0) var<uniform> params: UBOParams;
 
 
-var<private> MAX_MARCHING_STEPS: i32 = 255;
+// var<private> MAX_MARCHING_STEPS: i32 = 255;
+var<private> MAX_MARCHING_STEPS: i32 = 512;
 var<private> MIN_DIST: f32 = 0.0;
 var<private> MAX_DIST: f32 = 100.0;
 var<private> PRECISION: f32 = 0.001;
@@ -137,13 +138,13 @@ fn main(@builtin(position) coord: vec4<f32>) -> FragmentOutput {
     // coord is the interpolated position of the current fragment
     // coord.xy is the pixel coordinate of the current fragment (0,0 top left and bottom right is viewport width, viewport height)
     var fragCoord = coord.xy;
-    var iResolution = vec2<f32>(params.resolution);
+    var resolution = vec2<f32>(params.resolution);
    
     // correction of uv coordinates depending on resolutions
-    // var uv = (fragCoord-.5*iResolution.xy)/iResolution.y;
-    var uv = fragCoord / iResolution.xy; // [0, 1]
+    // var uv = (fragCoord-.5*resolution.xy)/resolution.y;
+    var uv = fragCoord / resolution.xy; // [0, 1]
     uv -= 0.5; // [-0.5, 0.5]
-    uv.x *= iResolution.x / iResolution.y; // [-0.5 * aspectRatio, 0.5 * aspectRatio]
+    uv.x *= resolution.x / resolution.y; // [-0.5 * aspectRatio, 0.5 * aspectRatio]
     uv.y = -uv.y; // flip y axis
 
     // var cameraPosition = vec3<f32>(0.0, 0.0, 5.0);
