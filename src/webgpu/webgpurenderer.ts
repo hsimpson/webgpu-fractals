@@ -1,4 +1,4 @@
-import { Vec2, Vec3, vec2 } from 'wgpu-matrix';
+import { Vec2, Vec3 } from 'wgpu-matrix';
 import { Camera } from './camera';
 import { createBuffer } from './helpers';
 import { WebGPUBindGroup } from './webgpubindgroup';
@@ -48,11 +48,10 @@ export class WebGPURenderer {
 
   private async initialize() {
     await this.context.initialize(this.canvas);
+    const width = this.canvas.clientWidth * window.devicePixelRatio;
+    const height = this.canvas.clientHeight * window.devicePixelRatio;
 
-    this.uniformParams.resolution = new Float32Array([this.canvas.clientWidth, this.canvas.clientHeight]);
-
-    const width = this.uniformParams.resolution[0] * window.devicePixelRatio;
-    const height = this.uniformParams.resolution[1] * window.devicePixelRatio;
+    this.uniformParams.resolution = new Float32Array([width, height]);
 
     this.presentationSize = {
       width,
@@ -80,17 +79,17 @@ export class WebGPURenderer {
   }
 
   private resize(newResolution: Vec2) {
-    if (!vec2.equals(this.uniformParams.resolution, newResolution)) {
-      this.uniformParams.resolution = newResolution;
+    const newWidth = newResolution[0] * window.devicePixelRatio;
+    const newHeight = newResolution[1] * window.devicePixelRatio;
 
-      const width = this.uniformParams.resolution[0] * window.devicePixelRatio;
-      const height = this.uniformParams.resolution[1] * window.devicePixelRatio;
+    if (newWidth !== this.presentationSize.width || newHeight !== this.presentationSize.height) {
+      this.uniformParams.resolution = new Float32Array([newWidth, newHeight]);
 
-      this.canvas.width = width;
-      this.canvas.height = height;
+      this.canvas.width = newWidth;
+      this.canvas.height = newHeight;
       this.presentationSize = {
-        width,
-        height,
+        width: newWidth,
+        height: newHeight,
         depthOrArrayLayers: this.depthOrArrayLayers,
       };
       this.reCreateRenderTargets();
