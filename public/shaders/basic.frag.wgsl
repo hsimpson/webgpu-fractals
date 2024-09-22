@@ -27,127 +27,143 @@ struct Surface {
     material: Material,
 }
 
+fn mixMaterial(m1: Material, m2: Material, k: f32) -> Material {
+    let color = mix(m1.baseColor, m2.baseColor, k);
+    return Material(color);
+}
+
 // signed distance function for a sphere
 // @param center: center of sphere
 // @param radius: radius of sphere
-// @return distance from point to sphere
-fn sdSphere(p: vec3<f32>, r: f32) -> f32 {
-    return length(p) - r;
+// @param material: material of sphere
+fn sdSphere(p: vec3<f32>, r: f32, material: Material) -> Surface {
+    var distance = length(p) - r;
+    return Surface(distance, material);
 }
 
 // signed distance function for a box
 // @param p: point in space
 // @param b: box dimensions
-// @return distance from point to box
-fn sdBox(p: vec3<f32>, b: vec3<f32>) -> f32 {
-    var d = abs(p) - b;
-    return length(max(d, vec3(0.0))) + min(max(d.x, max(d.y, d.z)), 0.0);
+// @param material: material of sphere
+fn sdBox(p: vec3<f32>, b: vec3<f32>, material: Material) -> Surface {
+    var box = abs(p) - b;
+    var distance = length(max(box, vec3(0.0))) + min(max(box.x, max(box.y, box.z)), 0.0);
+    return Surface(distance, material);
 }
 
 // signed distance function for round box
 // @param p: point in space
 // @param b: box dimensions
 // @param r: corner radius of the box
-// @return distance from point to round box
-fn sdRoundBox(p: vec3<f32>, b: vec3<f32>, r: f32) -> f32 {
-    var d = abs(p) - b;
-    return length(max(d, vec3(0.0))) + min(max(d.x, max(d.y, d.z)), 0.0) - r;
+fn sdRoundBox(p: vec3<f32>, b: vec3<f32>, r: f32, material: Material) -> Surface {
+    var box = abs(p) - b;
+    var distance = length(max(box, vec3(0.0))) + min(max(box.x, max(box.y, box.z)), 0.0) - r;
+    return Surface(distance, material);
 }
 
-fn sdFloor(p: vec3<f32>) -> f32 {
-    return p.y + 0.5;
+fn sdFloor(p: vec3<f32>, material: Material) -> Surface {
+    var distance = p.y + 1.0;
+    return Surface(distance, material);
 }
 
-// boolean operator subtract
-// @param d1: distance to object 1
-// @param d2: distance to object 2
-// @return distance to the subtracted object
-fn opSubtraction(d1: f32, d2: f32) -> f32 {
-    return max(-d1, d2);
+// operator subtract, subtracts object 1 from object 2
+// @param s1: surface of object 1
+// @param s2: surface of object 2
+fn opSubtraction(s1: Surface, s2: Surface) -> Surface {
+    // max(-d1,d2);
+    if(-s1.distance > s2.distance) {
+        return Surface(-s1.distance, s1.material);
+    }
+    return s2;
 }
 
-// boolean operator smooth-subtraction
-// @param d1: distance to object 1
-// @param d2: distance to object 2
-// @return distance to the smooth-subtracted object
-fn opSmoothSubtraction(d1: f32, d2: f32, k: f32) -> f32 {
-    return -opSmoothUnion(d1, -d2, k);
+// operator smooth-subtraction, subtracts object 1 from object 2
+// @param s1: surface of object 1
+// @param s2: surface of object 2
+// @param k: smoothness factor
+fn opSmoothSubtraction(s1: Surface, s2: Surface, k: f32) -> Surface {
+    // float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+    // return mix( d2, -d1, h ) + k*h*(1.0-h);
+    let h = clamp( 0.5 - 0.5 * (s2.distance + s1.distance) / k, 0.0, 1.0 );
+    let distance = mix(s2.distance, -s1.distance, h) + k * h * (1.0 - h);
+    return Surface(distance, mixMaterial(s2.material, s1.material, h));
 }
 
-fn opUnion(d1: f32, d2: f32) -> f32 {
-    return min(d1, d2);
+// operator union of object 1 and object 2
+// @param s1: surface of object 1
+// @param s2: surface of object 2
+fn opUnion(s1: Surface, s2: Surface) -> Surface {
+    // return min(d1, d2);
+    if(s1.distance < s2.distance) {
+        return s1;
+    }
+    return s2;
 }
 
-// boolean operator smooth-union
-// @param d1: distance to object 1
-// @param d2: distance to object 2
-// @return distance to the smooth-union object
-fn opSmoothUnion(d1: f32, d2: f32, k: f32) -> f32 {
-    let h = max(k - abs(d1 - d2), 0.0);
-    return min(d1, d2) - h * h * 0.25 / k;
+// operator smooth-union of object 1 and object 2
+// @param s1: surface of object 1
+// @param s2: surface of object 2
+// @param k: smoothness factor
+fn opSmoothUnion(s1: Surface, s2: Surface, k: f32) -> Surface {
+    // float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    // return mix( d2, d1, h ) - k*h*(1.0-h);
+    let h = clamp(0.5 + 0.5 * (s2.distance - s1.distance) / k, 0.0, 1.0);
+    let distance = mix(s2.distance, s1.distance, h) - k * h * (1.0 - h);
+    return Surface(distance, mixMaterial(s2.material, s1.material, h));
 }
 
 
 
-fn sdScene(p: vec3<f32>, rotation: mat3x3<f32>) -> f32 {
-    var an: f32 = sin(params.time);
-
+fn sdScene(p: vec3<f32>, rotation: mat3x3<f32>) -> Surface {
+    // let an: f32 = sin(params.time);
     // var displacement = sin(5.0 * p.x) * sin(5.0 * p.y) * sin(5.0 * p.z) * 0.25;
     
-    var p1 = p * rotation;
+    let p1 = p * rotation;
 
-    var sphere1Surface: Surface;
-    var sphere1Material: Material;
-    sphere1Material.baseColor = vec3<f32>(1.0, 0.0, 0.0);
-    sphere1Surface.material = sphere1Material;
-    // assume that the sphere is centered at the origin and has unit radius
-    sphere1Surface.distance = sdSphere(p1, 1.0);
+    // create a red sphere
+    let sphere1Material = Material(vec3<f32>(1.0, 0.0, 0.0));
+    let sphere1Surface = sdSphere(p1, 1.0, sphere1Material);
 
-    var sphere2Surface: Surface;
-    var sphere2Material: Material;
-    sphere2Material.baseColor = vec3<f32>(0.0, 0.0, 0.0);
-    sphere2Surface.material = sphere2Material;
-    // assume that the sphere is centered at the origin and has unit radius
-    sphere2Surface.distance = sdSphere(p1 - vec3<f32>(0.8, 0.4, 1.65), 1.0);
+    // create a green sphere
+    let sphere2Material = Material(vec3<f32>(0.0, 1.0, 0.0));
+    let sphere2Offset = p1 - vec3<f32>(1.0, 0.0, 0);
+    let sphere2Surface = sdSphere(sphere2Offset, 0.5, sphere2Material);
 
+    // subtract the green sphere from the red sphere
+    let sphereSubtraction = opSubtraction(sphere2Surface, sphere1Surface);
 
-    let sub1 = opSubtraction(sphere1Surface.distance, sphere2Surface.distance);
-
-    var roundBoxSurface: Surface;
-    var roundBoxMaterial: Material;
-    roundBoxMaterial.baseColor = vec3<f32>(0.0, 0.0, 1.0);
-    roundBoxSurface.material = roundBoxMaterial;
-    roundBoxSurface.distance = sdRoundBox(p1 - vec3<f32>(-1.0 + 0.1 * an, 0.0, 0.0), vec3<f32>(0.5, 0.5, 0.5), 0.05);
-
-    var sphere3Surface: Surface;
-    var sphere3Material: Material;
-    sphere3Material.baseColor = vec3<f32>(0.0, 0.0, 0.0);
-    sphere3Surface.material = sphere3Material;
-    // assume that the sphere is centered at the origin and has unit radius
-    sphere3Surface.distance = sdSphere(p1 - vec3<f32>(-2.0 + 0.5 * -an, 0.0, 0.0), 0.25);
-
-    let smoothSub = opSmoothSubtraction(sphere3Surface.distance, roundBoxSurface.distance, 0.25);
-
-    var smoothUnion = opSmoothUnion(sub1, smoothSub, 0.2);
-
-    var floorSurface: Surface;
-    var floorMaterial: Material;
-    floorMaterial.baseColor = vec3<f32>(0.4);
-    floorSurface.material = floorMaterial;
-    floorSurface.distance = sdFloor(p1);
+    // create a blue round box
+    let roundBoxMaterial = Material(vec3<f32>(0.0, 0.0, 1.0));
+    let roundBoxOffset = p1 - vec3<f32>(-1.0, 0.0, 0.0);
+    let roundBoxDimensions = vec3<f32>(0.5, 0.5, 0.5);
+    let roundBoxSurface = sdRoundBox(roundBoxOffset, roundBoxDimensions, 0.05, roundBoxMaterial);
     
-    var d = opUnion(smoothUnion, floorSurface.distance);
+    // union of the red sphere and the blue round box
+    let sphereBoxUnion = opSmoothUnion(sphereSubtraction, roundBoxSurface, 0.25);
 
-    return d;
+    // create a yellow sphere
+    let sphere3Material = Material(vec3<f32>(1.0, 1.0, 0.0));
+    let sphere3Offset = p1 - vec3<f32>(-1.4, 0.0, 0.0);
+    let sphere3Surface = sdSphere(sphere3Offset, 0.25, sphere3Material);
+
+    // subtract the yellow sphere from the union of the red sphere and the blue round box
+    let boxSubstration = opSmoothSubtraction(sphere3Surface, sphereBoxUnion, 0.25);
+
+    let floorMaterial = Material(vec3<f32>(0.6));
+    let floorSurface = sdFloor(p1, floorMaterial);
+    
+    let withFloor = opUnion(boxSubstration, floorSurface);
+
+    return withFloor;
 }
 
 fn calcNormal(p: vec3<f32>, rotation: mat3x3<f32>) -> vec3<f32> {
     var e = vec2<f32>(1.0, -1.0) * 0.0005; // epsilon
     return normalize(
-        e.xyy * sdScene(p + e.xyy, rotation) + 
-        e.yyx * sdScene(p + e.yyx, rotation) + 
-        e.yxy * sdScene(p + e.yxy, rotation) + 
-        e.xxx * sdScene(p + e.xxx, rotation)
+        e.xyy * sdScene(p + e.xyy, rotation).distance +
+        e.yyx * sdScene(p + e.yyx, rotation).distance +
+        e.yxy * sdScene(p + e.yxy, rotation).distance +
+        e.xxx * sdScene(p + e.xxx, rotation).distance
     );
 }
 
@@ -184,18 +200,19 @@ fn rotateZ(theta: f32) -> mat3x3<f32> {
     );
 }
 
-fn rayMarch(rayOrigin: vec3<f32>, rayDirection: vec3<f32>, start: f32, end: f32, rotation: mat3x3<f32>) -> f32 {
+fn rayMarch(rayOrigin: vec3<f32>, rayDirection: vec3<f32>, start: f32, end: f32, rotation: mat3x3<f32>) -> Surface {
     var depth = start;
+    var closestObject: Surface;
 
     for (var i = 0; i < MAX_MARCHING_STEPS; i++) {
         var p = rayOrigin + depth * rayDirection;
-        var dist = sdScene(p, rotation);
-        depth += dist;
-        if dist < PRECISION || depth > end {
+        closestObject = sdScene(p, rotation);
+        depth += closestObject.distance;
+        if closestObject.distance < PRECISION || depth > end {
             break;
         }
     }
-    return depth;
+    return Surface(depth, closestObject.material);
 }
 
 @fragment
@@ -223,13 +240,13 @@ fn main(@builtin(position) coord: vec4<f32>) -> FragmentOutput {
     var color = vec3<f32>(0.0, 0.0, 0.0);
 
     let rotation = rotateX(params.cameraRotation.x) * rotateY(params.cameraRotation.y) * rotateZ(0.0);
-    var distance = rayMarch(rayOrigin, rayDirection, MIN_DIST, MAX_DIST, rotation);
-    if distance > MAX_DIST {
+    let closestObject = rayMarch(rayOrigin, rayDirection, MIN_DIST, MAX_DIST, rotation);
+    if closestObject.distance > MAX_DIST {
         // no hit
         color = backgroundColor;
     } else {
         // hit
-        var hitPoint: vec3<f32> = rayOrigin + rayDirection * distance;
+        var hitPoint: vec3<f32> = rayOrigin + rayDirection * closestObject.distance;
         var normal = calcNormal(hitPoint, rotation);
         var lightPosition = vec3<f32>(2.0, 2.0, 4.0);
         var directionToLight = normalize(lightPosition - hitPoint);
@@ -238,7 +255,9 @@ fn main(@builtin(position) coord: vec4<f32>) -> FragmentOutput {
         // the normal and the light direction.
         var diffuseIntensity = clamp(dot(normal, directionToLight), 0.0, 1.0);
 
-        color = vec3<f32>(diffuseIntensity) * vec3<f32>(1.0, 0.0, 0.0);
+        // only use material basecolor for now
+        color = closestObject.material.baseColor;
+        color = vec3<f32>(diffuseIntensity) * color;
     }
 
     output.fragColor = vec4(color, 1.0);
