@@ -7,7 +7,7 @@ type WebGPUBindGroupOptions = WebGPUResourceOptions & {
 };
 
 export class WebGPUBindGroup {
-  private group: GPUBindGroup;
+  private group!: GPUBindGroup;
 
   public get bindGroup() {
     return this.group;

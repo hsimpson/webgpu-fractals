@@ -11,7 +11,7 @@ type WebGPURenderPipelineOptions = WebGPUResourceOptions & {
 };
 
 export class WebGPURenderPipeline {
-  private renderPipeline: GPURenderPipeline;
+  private renderPipeline!: GPURenderPipeline;
 
   public get pipeline() {
     return this.renderPipeline;

@@ -5,7 +5,7 @@ type WebGPUBindGroupLayoutOptions = WebGPUResourceOptions & {
 };
 
 export class WebGPUBindGroupLayout {
-  private bindGroupLayout: GPUBindGroupLayout;
+  private bindGroupLayout!: GPUBindGroupLayout;
 
   public get layout() {
     return this.bindGroupLayout;

@@ -17,25 +17,25 @@ type UniformParams = {
 export class WebGPURenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly context = new WebGPURenderContext();
-  private presentationSize: GPUExtent3DDict;
+  private presentationSize!: GPUExtent3DDict;
   private readonly depthOrArrayLayers = 1;
-  private readonly sampleCount = 4;
+  private sampleCount = 4;
 
-  private renderTarget: GPUTexture;
-  private renderTargetView: GPUTextureView;
+  private renderTarget?: GPUTexture;
+  private renderTargetView!: GPUTextureView;
 
-  private depthTarget: GPUTexture;
-  private depthTargetView: GPUTextureView;
+  private depthTarget?: GPUTexture;
+  private depthTargetView!: GPUTextureView;
   private currentTime = 0;
-  private renderPipeline: WebGPURenderPipeline;
+  private renderPipeline!: WebGPURenderPipeline;
   // private computePipeline: GPUComputePipeline;
 
   private uniformParams: UniformParams;
-  private uniformParamsBuffer: GPUBuffer;
-  private uniformParamsGroup: WebGPUBindGroup;
+  private uniformParamsBuffer!: GPUBuffer;
+  private uniformParamsGroup!: WebGPUBindGroup;
   private camera: Camera;
 
-  constructor(canvas: HTMLCanvasElement) {
+  public constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.camera = new Camera(canvas, new Float32Array([0, 0, 5]), new Float32Array([0, 0]));
     this.uniformParams = {
@@ -63,13 +63,13 @@ export class WebGPURenderer {
     this.canvas.width = width;
     this.canvas.height = height;
 
-    this.context.presentationContext.configure({
+    this.context.presentationContext?.configure({
       device: this.context.device,
       format: this.context.presentationFormat,
       alphaMode: 'opaque',
     });
 
-    const resizeObserver = new ResizeObserver(entries => {
+    const resizeObserver = new ResizeObserver((entries) => {
       if (!Array.isArray(entries)) {
         return;
       }
@@ -98,7 +98,7 @@ export class WebGPURenderer {
   }
 
   private reCreateRenderTargets() {
-    if (this.renderTarget) {
+    if (this.renderTarget !== undefined) {
       this.renderTarget.destroy();
     }
     if (this.depthTarget) {
@@ -208,8 +208,8 @@ export class WebGPURenderer {
 
     this.render(duration);
     window.requestAnimationFrame(this.update);
-    const endFrameTime = performance.now();
-    const _frameDuration = endFrameTime - beginFrameTime;
+    // const endFrameTime = performance.now();
+    // const _frameDuration = endFrameTime - beginFrameTime;
   };
 
   private render(_deltaTime: number) {
@@ -218,12 +218,27 @@ export class WebGPURenderer {
   }
 
   private renderPass() {
+    if (!this.context.presentationContext) {
+      throw new Error('No resentationContext given');
+    }
+
     this.updateUniformBuffer();
+
+    let view: GPUTextureView;
+    let resolveTarget: GPUTextureView | undefined;
+
+    if (this.sampleCount > 1) {
+      view = this.renderTargetView;
+      resolveTarget = this.context.presentationContext.getCurrentTexture().createView();
+    } else {
+      view = this.context.presentationContext.getCurrentTexture().createView();
+    }
+
     const renderPassDesc: GPURenderPassDescriptor = {
       colorAttachments: [
         {
-          view: this.sampleCount > 1 ? this.renderTargetView : this.context.presentationContext.getCurrentTexture().createView(),
-          resolveTarget: this.sampleCount > 1 ? this.context.presentationContext.getCurrentTexture().createView() : undefined,
+          view,
+          resolveTarget,
           clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
           loadOp: 'clear',
           storeOp: 'discard',

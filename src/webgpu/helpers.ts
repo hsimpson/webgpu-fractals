@@ -1,4 +1,5 @@
 export function supportsWebGPU(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (navigator.gpu) {
     return true;
   }
@@ -6,16 +7,12 @@ export function supportsWebGPU(): boolean {
 }
 
 export function createBuffer(array: ArrayBuffer, usage: GPUBufferUsageFlags, device: GPUDevice): GPUBuffer {
-  try {
-    const buffer = device.createBuffer({
-      size: array.byteLength,
-      usage,
-    });
+  const buffer = device.createBuffer({
+    size: array.byteLength,
+    usage,
+  });
 
-    device.queue.writeBuffer(buffer, 0, array);
+  device.queue.writeBuffer(buffer, 0, array);
 
-    return buffer;
-  } catch (e) {
-    console.error(e);
-  }
+  return buffer;
 }

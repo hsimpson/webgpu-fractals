@@ -6,7 +6,7 @@ export type WebGPUPipelineLayoutOptions = WebGPUResourceOptions & {
 };
 
 export class WebGPUPipelineLayout {
-  private pipelineLayout: GPUPipelineLayout;
+  private pipelineLayout!: GPUPipelineLayout;
 
   public get layout() {
     return this.pipelineLayout;
@@ -15,7 +15,7 @@ export class WebGPUPipelineLayout {
   public create(options: WebGPUPipelineLayoutOptions) {
     this.pipelineLayout = options.device.createPipelineLayout({
       label: options.label,
-      bindGroupLayouts: options.bindGroupLayouts.map(bgl => bgl.layout),
+      bindGroupLayouts: options.bindGroupLayouts.map((bgl) => bgl.layout),
     });
   }
 }

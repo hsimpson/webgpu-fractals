@@ -3,7 +3,7 @@ import { Vec2, Vec3, vec2 } from 'wgpu-matrix';
 export class Camera {
   private currentMousePosition: Vec2 = vec2.create();
 
-  constructor(
+  public constructor(
     canvas: HTMLCanvasElement,
     private cameraPosition: Vec3,
     private cameraRotation: Vec2,

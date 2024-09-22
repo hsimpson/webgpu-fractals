@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { WebGPURenderer } from '../webgpu';
 
 const Renderer = () => {
-  const canvasEl = useRef<HTMLCanvasElement>(undefined);
-  const webGPURender = useRef<WebGPURenderer>(undefined);
+  const canvasEl = useRef<HTMLCanvasElement>(null);
+  const webGPURender = useRef<WebGPURenderer | null>(null);
 
   useEffect(() => {
     if (canvasEl.current && !webGPURender.current) {

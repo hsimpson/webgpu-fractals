@@ -1,11 +1,11 @@
 export class WebGPURenderContext {
-  private _canvas: HTMLCanvasElement;
-  private _device: GPUDevice;
-  private _queue: GPUQueue;
-  private _gpuCanvasContext: GPUCanvasContext;
-  private _presentationFormat: GPUTextureFormat;
-  private _adapterLimits: GPUSupportedLimits;
-  private _adapterInfo: GPUAdapterInfo;
+  private _canvas!: HTMLCanvasElement;
+  private _device!: GPUDevice;
+  private _queue!: GPUQueue;
+  private _gpuCanvasContext!: GPUCanvasContext | null;
+  private _presentationFormat!: GPUTextureFormat;
+  private _adapterLimits!: GPUSupportedLimits;
+  private _adapterInfo!: GPUAdapterInfo;
 
   public async initialize(canvas: HTMLCanvasElement) {
     this._canvas = canvas;
@@ -13,8 +13,12 @@ export class WebGPURenderContext {
     const gpu: GPU = navigator.gpu;
 
     const adapter = await gpu.requestAdapter();
+    if (!adapter) {
+      throw new Error('Could not request Adapter');
+    }
+
     this._adapterLimits = adapter.limits;
-    this._adapterInfo = await adapter.requestAdapterInfo();
+    this._adapterInfo = adapter.info;
     this._device = await adapter.requestDevice();
     this._queue = this._device.queue;
 

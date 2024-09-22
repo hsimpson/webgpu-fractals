@@ -1,6 +1,6 @@
-module.exports = {
+export default {
   mode: 'jit',
-  content: ['./**/*.html', './**/*.tsx'],
+  content: ['./src/**/*.{html,tsx}'],
   theme: {
     extend: {},
   },
