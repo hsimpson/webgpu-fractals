@@ -1,22 +1,14 @@
-import { Vec2, Vec3 } from 'wgpu-matrix';
+import { createContext, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
+import { Vec2 } from 'wgpu-matrix';
 import { Camera } from './camera';
-import { createBuffer } from './helpers';
 import { WebGPUBindGroup } from './webgpubindgroup';
 import { WebGPUBindGroupLayout } from './webgpubindgrouplayout';
-import { WebGPURenderContext } from './webgpucontext';
 import { WebGPUPipelineLayout } from './webgpupipelinelayout';
 import { WebGPURenderPipeline } from './webgpurenderpipeline';
 
-type UniformParams = {
-  resolution: Vec2;
-  cameraPosition: Vec3;
-  cameraRotation: Vec2;
-  time: number;
-};
-
 export class WebGPURenderer {
   private readonly canvas: HTMLCanvasElement;
-  private readonly context = new WebGPURenderContext();
+  private context!: WebGPUContext;
   private presentationSize!: GPUExtent3DDict;
   private readonly depthOrArrayLayers = 1;
   private sampleCount = 4;
@@ -30,28 +22,65 @@ export class WebGPURenderer {
   private renderPipeline!: WebGPURenderPipeline;
   // private computePipeline: GPUComputePipeline;
 
-  private uniformParams: UniformParams;
-  private uniformParamsBuffer!: GPUBuffer;
+  private uniformParamsBuffer!: WebGPUBuffer;
   private uniformParamsGroup!: WebGPUBindGroup;
   private camera: Camera;
+  private resolution: Vec2 = new Float32Array([0, 0]);
+  private time = 0;
 
   public constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.camera = new Camera(canvas, new Float32Array([0, 0, 5]), new Float32Array([0, 0]));
-    this.uniformParams = {
-      resolution: new Float32Array([0, 0]),
-      cameraPosition: this.camera.position,
-      cameraRotation: this.camera.rotation,
-      time: 0,
-    };
+  }
+
+  private createUniformParamsBuffer() {
+    this.uniformParamsBuffer = new WebGPUBuffer(this.context, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+    this.uniformParamsBuffer.setData('resolution', {
+      type: Float32Array,
+      data: this.resolution,
+      offset: 0,
+      padding: 16,
+    });
+
+    this.uniformParamsBuffer.setData('cameraPosition', {
+      type: Float32Array,
+      data: this.camera.position,
+      offset: 16,
+      padding: 16,
+    });
+
+    this.uniformParamsBuffer.setData('cameraRotation', {
+      type: Float32Array,
+      data: this.camera.rotation,
+      offset: 32,
+      padding: 8,
+    });
+
+    this.uniformParamsBuffer.setData('time', {
+      type: Float32Array,
+      data: new Float32Array([this.time]),
+      offset: 40,
+      padding: 8,
+    });
+
+    this.uniformParamsBuffer.writeBuffer();
   }
 
   private async initialize() {
-    await this.context.initialize(this.canvas);
+    const context = await createContext(this.canvas);
+    if (!context) {
+      throw new Error('Could not create WebGPU context');
+    }
+
+    this.context = context;
+
     const width = this.canvas.clientWidth * window.devicePixelRatio;
     const height = this.canvas.clientHeight * window.devicePixelRatio;
 
-    this.uniformParams.resolution = new Float32Array([width, height]);
+    this.resolution[0] = width;
+    this.resolution[1] = height;
+
+    this.createUniformParamsBuffer();
 
     this.presentationSize = {
       width,
@@ -62,9 +91,9 @@ export class WebGPURenderer {
     this.canvas.width = width;
     this.canvas.height = height;
 
-    this.context.presentationContext?.configure({
+    this.context.gpuCanvasContext.configure({
       device: this.context.device,
-      format: this.context.presentationFormat,
+      format: this.context.preferredCanvasFormat,
       alphaMode: 'opaque',
     });
 
@@ -83,7 +112,15 @@ export class WebGPURenderer {
     const newHeight = newResolution[1] * window.devicePixelRatio;
 
     if (newWidth !== this.presentationSize.width || newHeight !== this.presentationSize.height) {
-      this.uniformParams.resolution = new Float32Array([newWidth, newHeight]);
+      this.resolution[0] = newWidth;
+      this.resolution[1] = newHeight;
+
+      this.uniformParamsBuffer.setData('resolution', {
+        type: Uint32Array,
+        data: new Float32Array([newWidth, newHeight]),
+        offset: 0,
+        padding: 16,
+      });
 
       this.canvas.width = newWidth;
       this.canvas.height = newHeight;
@@ -108,7 +145,7 @@ export class WebGPURenderer {
     this.renderTarget = this.context.device.createTexture({
       size: this.presentationSize,
       sampleCount: this.sampleCount,
-      format: this.context.presentationFormat,
+      format: this.context.preferredCanvasFormat,
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
     this.renderTargetView = this.renderTarget.createView();
@@ -123,22 +160,7 @@ export class WebGPURenderer {
     this.depthTargetView = this.depthTarget.createView();
   }
 
-  private getUniformParamsArray(): ArrayBuffer {
-    const uniformParamsArray = new ArrayBuffer(48);
-    new Uint32Array(uniformParamsArray, 0, 2).set(this.uniformParams.resolution);
-    new Float32Array(uniformParamsArray, 16, 3).set(this.uniformParams.cameraPosition);
-    new Float32Array(uniformParamsArray, 32, 2).set(this.uniformParams.cameraRotation);
-    new Float32Array(uniformParamsArray, 40, 1).set([this.uniformParams.time]);
-    return uniformParamsArray;
-  }
-
   private async initializeResources() {
-    this.uniformParamsBuffer = createBuffer(
-      this.getUniformParamsArray(),
-      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      this.context.device,
-    );
-
     const bindGroupLayout = new WebGPUBindGroupLayout();
     bindGroupLayout.create({
       device: this.context.device,
@@ -161,11 +183,12 @@ export class WebGPURenderer {
         {
           binding: 0,
           resource: {
-            buffer: this.uniformParamsBuffer,
+            buffer: this.uniformParamsBuffer.getRawBuffer(),
           },
         },
       ],
     });
+    // }
 
     const pipelineLayout = new WebGPUPipelineLayout();
     pipelineLayout.create({
@@ -178,14 +201,10 @@ export class WebGPURenderer {
       device: this.context.device,
       vertexShaderFile: './shaders/basic.vert.wgsl',
       fragmentShaderFile: './shaders/basic.frag.wgsl',
-      fragmentTargets: [{ format: this.context.presentationFormat }],
+      fragmentTargets: [{ format: this.context.preferredCanvasFormat }],
       sampleCount: this.sampleCount,
       pipelineLayout,
     });
-  }
-
-  private updateUniformBuffer() {
-    this.context.queue.writeBuffer(this.uniformParamsBuffer, 0, this.getUniformParamsArray());
   }
 
   public async start() {
@@ -201,9 +220,7 @@ export class WebGPURenderer {
     const duration = beginFrameTime - this.currentTime;
     this.currentTime = beginFrameTime;
 
-    this.uniformParams.cameraPosition = this.camera.position;
-    this.uniformParams.cameraRotation = this.camera.rotation;
-    this.uniformParams.time += duration / 1000;
+    this.time += duration / 1000;
 
     this.render(duration);
     window.requestAnimationFrame(this.update);
@@ -217,20 +234,17 @@ export class WebGPURenderer {
   }
 
   private renderPass() {
-    if (!this.context.presentationContext) {
-      throw new Error('No resentationContext given');
-    }
-
-    this.updateUniformBuffer();
+    // update uniform buffer
+    this.uniformParamsBuffer.writeBuffer();
 
     let view: GPUTextureView;
     let resolveTarget: GPUTextureView | undefined;
 
     if (this.sampleCount > 1) {
       view = this.renderTargetView;
-      resolveTarget = this.context.presentationContext.getCurrentTexture().createView();
+      resolveTarget = this.context.gpuCanvasContext.getCurrentTexture().createView();
     } else {
-      view = this.context.presentationContext.getCurrentTexture().createView();
+      view = this.context.gpuCanvasContext.getCurrentTexture().createView();
     }
 
     const renderPassDesc: GPURenderPassDescriptor = {

@@ -1,5 +1,5 @@
+import { supportsWebGPU } from '@donnerknalli/webgpu-utils';
 import React from 'react';
-import { supportsWebGPU } from '../webgpu';
 import NoWebGPU from './NoWebGPU';
 import Renderer from './Renderer';
 
