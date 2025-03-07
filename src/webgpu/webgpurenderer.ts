@@ -1,4 +1,4 @@
-import { createContext, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
+import { BufferDataType, createContext, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
 import { Vec2 } from 'wgpu-matrix';
 import { Camera } from './camera';
 import { WebGPUBindGroup } from './webgpubindgroup';
@@ -34,33 +34,29 @@ export class WebGPURenderer {
   }
 
   private createUniformParamsBuffer() {
-    this.uniformParamsBuffer = new WebGPUBuffer(this.context, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+    this.uniformParamsBuffer = new WebGPUBuffer(
+      this.context,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      'uniformBuffer',
+    );
     this.uniformParamsBuffer.setData('resolution', {
-      type: Float32Array,
       data: this.resolution,
-      offset: 0,
-      padding: 16,
+      dataType: BufferDataType.Vec2OfFloat32,
     });
 
     this.uniformParamsBuffer.setData('cameraPosition', {
-      type: Float32Array,
       data: this.camera.position,
-      offset: 16,
-      padding: 16,
+      dataType: BufferDataType.Vec3OfFloat32,
     });
 
     this.uniformParamsBuffer.setData('cameraRotation', {
-      type: Float32Array,
       data: this.camera.rotation,
-      offset: 32,
-      padding: 8,
+      dataType: BufferDataType.Vec2OfFloat32,
     });
 
     this.uniformParamsBuffer.setData('time', {
-      type: Float32Array,
       data: new Float32Array([this.time]),
-      offset: 40,
-      padding: 8,
+      dataType: BufferDataType.Float32,
     });
 
     this.uniformParamsBuffer.writeBuffer();
@@ -82,11 +78,7 @@ export class WebGPURenderer {
 
     this.createUniformParamsBuffer();
 
-    this.presentationSize = {
-      width,
-      height,
-      depthOrArrayLayers: this.depthOrArrayLayers,
-    };
+    this.presentationSize = { width, height, depthOrArrayLayers: this.depthOrArrayLayers };
 
     this.canvas.width = width;
     this.canvas.height = height;
@@ -115,20 +107,9 @@ export class WebGPURenderer {
       this.resolution[0] = newWidth;
       this.resolution[1] = newHeight;
 
-      this.uniformParamsBuffer.setData('resolution', {
-        type: Uint32Array,
-        data: new Float32Array([newWidth, newHeight]),
-        offset: 0,
-        padding: 16,
-      });
-
       this.canvas.width = newWidth;
       this.canvas.height = newHeight;
-      this.presentationSize = {
-        width: newWidth,
-        height: newHeight,
-        depthOrArrayLayers: this.depthOrArrayLayers,
-      };
+      this.presentationSize = { width: newWidth, height: newHeight, depthOrArrayLayers: this.depthOrArrayLayers };
       this.reCreateRenderTargets();
     }
   }
@@ -137,6 +118,7 @@ export class WebGPURenderer {
     if (this.renderTarget !== undefined) {
       this.renderTarget.destroy();
     }
+
     if (this.depthTarget) {
       this.depthTarget.destroy();
     }
@@ -164,37 +146,19 @@ export class WebGPURenderer {
     const bindGroupLayout = new WebGPUBindGroupLayout();
     bindGroupLayout.create({
       device: this.context.device,
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {
-            type: 'uniform',
-          },
-        },
-      ],
+      entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }],
     });
 
     this.uniformParamsGroup = new WebGPUBindGroup();
     this.uniformParamsGroup.create({
       device: this.context.device,
       bindGroupLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: {
-            buffer: this.uniformParamsBuffer.getRawBuffer(),
-          },
-        },
-      ],
+      entries: [{ binding: 0, resource: { buffer: this.uniformParamsBuffer.getRawBuffer() } }],
     });
     // }
 
     const pipelineLayout = new WebGPUPipelineLayout();
-    pipelineLayout.create({
-      device: this.context.device,
-      bindGroupLayouts: [bindGroupLayout],
-    });
+    pipelineLayout.create({ device: this.context.device, bindGroupLayouts: [bindGroupLayout] });
 
     this.renderPipeline = new WebGPURenderPipeline();
     await this.renderPipeline.create({
@@ -249,13 +213,7 @@ export class WebGPURenderer {
 
     const renderPassDesc: GPURenderPassDescriptor = {
       colorAttachments: [
-        {
-          view,
-          resolveTarget,
-          clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
-          loadOp: 'clear',
-          storeOp: 'discard',
-        },
+        { view, resolveTarget, clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }, loadOp: 'clear', storeOp: 'discard' },
       ],
       // depthStencilAttachment: {
       //   view: this.depthTargetView,
