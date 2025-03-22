@@ -1,10 +1,10 @@
-import { supportsWebGPU } from '@donnerknalli/webgpu-utils';
+import { WebGPUContext } from '@donnerknalli/webgpu-utils';
 import React from 'react';
 import NoWebGPU from './NoWebGPU';
 import Renderer from './Renderer';
 
 const App = () => {
-  const isWebGPUSupported = supportsWebGPU();
+  const isWebGPUSupported = WebGPUContext.supportsWebGPU();
   return isWebGPUSupported ? <Renderer /> : <NoWebGPU />;
 };
 

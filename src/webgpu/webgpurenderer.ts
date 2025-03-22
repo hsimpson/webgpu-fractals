@@ -1,4 +1,4 @@
-import { BufferDataType, createContext, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
+import { BufferDataType, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
 import { Vec2 } from 'wgpu-matrix';
 import { Camera } from './camera';
 import { WebGPUBindGroup } from './webgpubindgroup';
@@ -8,7 +8,7 @@ import { WebGPURenderPipeline } from './webgpurenderpipeline';
 
 export class WebGPURenderer {
   private readonly canvas: HTMLCanvasElement;
-  private context!: WebGPUContext;
+  private readonly webGPUContext: WebGPUContext;
   private presentationSize!: GPUExtent3DDict;
   private readonly depthOrArrayLayers = 1;
   private sampleCount = 4;
@@ -30,12 +30,13 @@ export class WebGPURenderer {
 
   public constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    this.webGPUContext = new WebGPUContext(canvas);
     this.camera = new Camera(canvas, new Float32Array([0, 0, 5]), new Float32Array([0, 0]));
   }
 
   private createUniformParamsBuffer() {
     this.uniformParamsBuffer = new WebGPUBuffer(
-      this.context,
+      this.webGPUContext,
       GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       'uniformBuffer',
     );
@@ -63,12 +64,10 @@ export class WebGPURenderer {
   }
 
   private async initialize() {
-    const context = await createContext(this.canvas);
+    const context = await this.webGPUContext.create();
     if (!context) {
       throw new Error('Could not create WebGPU context');
     }
-
-    this.context = context;
 
     const width = this.canvas.clientWidth * window.devicePixelRatio;
     const height = this.canvas.clientHeight * window.devicePixelRatio;
@@ -83,9 +82,9 @@ export class WebGPURenderer {
     this.canvas.width = width;
     this.canvas.height = height;
 
-    this.context.gpuCanvasContext.configure({
-      device: this.context.device,
-      format: this.context.preferredCanvasFormat,
+    this.webGPUContext.gpuCanvasContext.configure({
+      device: this.webGPUContext.device,
+      format: this.webGPUContext.preferredCanvasFormat,
       alphaMode: 'opaque',
     });
 
@@ -124,16 +123,16 @@ export class WebGPURenderer {
     }
 
     /* render target */
-    this.renderTarget = this.context.device.createTexture({
+    this.renderTarget = this.webGPUContext.device.createTexture({
       size: this.presentationSize,
       sampleCount: this.sampleCount,
-      format: this.context.preferredCanvasFormat,
+      format: this.webGPUContext.preferredCanvasFormat,
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
     this.renderTargetView = this.renderTarget.createView();
 
     /* depth target */
-    this.depthTarget = this.context.device.createTexture({
+    this.depthTarget = this.webGPUContext.device.createTexture({
       size: this.presentationSize,
       sampleCount: this.sampleCount,
       format: 'depth24plus-stencil8',
@@ -145,27 +144,27 @@ export class WebGPURenderer {
   private async initializeResources() {
     const bindGroupLayout = new WebGPUBindGroupLayout();
     bindGroupLayout.create({
-      device: this.context.device,
+      device: this.webGPUContext.device,
       entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }],
     });
 
     this.uniformParamsGroup = new WebGPUBindGroup();
     this.uniformParamsGroup.create({
-      device: this.context.device,
+      device: this.webGPUContext.device,
       bindGroupLayout,
       entries: [{ binding: 0, resource: { buffer: this.uniformParamsBuffer.getRawBuffer() } }],
     });
     // }
 
     const pipelineLayout = new WebGPUPipelineLayout();
-    pipelineLayout.create({ device: this.context.device, bindGroupLayouts: [bindGroupLayout] });
+    pipelineLayout.create({ device: this.webGPUContext.device, bindGroupLayouts: [bindGroupLayout] });
 
     this.renderPipeline = new WebGPURenderPipeline();
     await this.renderPipeline.create({
-      device: this.context.device,
+      device: this.webGPUContext.device,
       vertexShaderFile: './shaders/basic.vert.wgsl',
       fragmentShaderFile: './shaders/basic.frag.wgsl',
-      fragmentTargets: [{ format: this.context.preferredCanvasFormat }],
+      fragmentTargets: [{ format: this.webGPUContext.preferredCanvasFormat }],
       sampleCount: this.sampleCount,
       pipelineLayout,
     });
@@ -206,9 +205,9 @@ export class WebGPURenderer {
 
     if (this.sampleCount > 1) {
       view = this.renderTargetView;
-      resolveTarget = this.context.gpuCanvasContext.getCurrentTexture().createView();
+      resolveTarget = this.webGPUContext.gpuCanvasContext.getCurrentTexture().createView();
     } else {
-      view = this.context.gpuCanvasContext.getCurrentTexture().createView();
+      view = this.webGPUContext.gpuCanvasContext.getCurrentTexture().createView();
     }
 
     const renderPassDesc: GPURenderPassDescriptor = {
@@ -228,14 +227,14 @@ export class WebGPURenderer {
       // },
     };
 
-    const commandEncoder = this.context.device.createCommandEncoder();
+    const commandEncoder = this.webGPUContext.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass(renderPassDesc);
     passEncoder.setPipeline(this.renderPipeline.pipeline);
     passEncoder.setBindGroup(0, this.uniformParamsGroup.bindGroup);
     passEncoder.draw(3, 1, 0, 0); // only 1 triangle
     passEncoder.end();
 
-    this.context.queue.submit([commandEncoder.finish()]);
+    this.webGPUContext.queue.submit([commandEncoder.finish()]);
   }
 
   // private computePass(deltaTime: number) {
