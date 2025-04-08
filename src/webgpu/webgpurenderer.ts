@@ -1,6 +1,6 @@
-import { BufferDataType, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
+import { BufferDataType, Camera, CameraControls, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
 import { Vec2 } from 'wgpu-matrix';
-import { Camera } from './camera';
+
 import { WebGPUBindGroup } from './webgpubindgroup';
 import { WebGPUBindGroupLayout } from './webgpubindgrouplayout';
 import { WebGPUPipelineLayout } from './webgpupipelinelayout';
@@ -31,7 +31,8 @@ export class WebGPURenderer {
   public constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.webGPUContext = new WebGPUContext(canvas);
-    this.camera = new Camera(canvas, new Float32Array([0, 0, 5]), new Float32Array([0, 0]));
+    this.camera = new Camera(45, canvas.width / canvas.height, 0.1, 1000);
+    new CameraControls(canvas, this.camera);
   }
 
   private createUniformParamsBuffer() {
