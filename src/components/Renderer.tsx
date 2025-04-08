@@ -12,7 +12,7 @@ const Renderer = () => {
     }
   }, []);
 
-  return <canvas className="w-full h-full" ref={canvasEl} />;
+  return <canvas className="h-full w-full" ref={canvasEl} />;
 };
 
 export default Renderer;

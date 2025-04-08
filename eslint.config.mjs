@@ -7,18 +7,11 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   eslint.configs.recommended,
-  ...tseslint.configs.strictTypeChecked,
+  tseslint.configs.strictTypeChecked,
   // ...tseslint.config.stylistic,
 
   {
-    ignores: [
-      'dist/**/*',
-      'eslint.config.mjs',
-      'postcss.config.js',
-      'prettier.config.js',
-      'tailwind.config.js',
-      'vite.config.mjs',
-    ],
+    ignores: ['dist/**/*', 'eslint.config.mjs', 'prettier.config.js', 'tailwind.config.js', 'vite.config.mjs'],
   },
   {
     languageOptions: {
