@@ -3,10 +3,10 @@ struct FragmentOutput {
 }
 
 struct UBOParams {
-   resolution: vec2<f32>,
-   cameraPosition: vec3<f32>,
-   cameraRotation: vec2<f32>,
-   time: f32,
+    resolution: vec2<f32>,
+    cameraPosition: vec3<f32>,
+    cameraRotation: mat3x3<f32>,
+    time: f32,
 }
 
 @group(0) @binding(0) var<uniform> params: UBOParams;
@@ -238,15 +238,15 @@ fn main(@builtin(position) coord: vec4<f32>) -> FragmentOutput {
 
     var color = vec3<f32>(0.0, 0.0, 0.0);
 
-    let rotation = rotateX(params.cameraRotation.x) * rotateY(params.cameraRotation.y) * rotateZ(0.0);
-    let closestObject = rayMarch(rayOrigin, rayDirection, MIN_DIST, MAX_DIST, rotation);
+    //let rotation = rotateX(params.cameraRotation.x) * rotateY(params.cameraRotation.y) * rotateZ(0.0);
+    let closestObject = rayMarch(rayOrigin, rayDirection, MIN_DIST, MAX_DIST, params.cameraRotation);
     if closestObject.distance > MAX_DIST {
         // no hit
         color = backgroundColor;
     } else {
         // hit
         var hitPoint: vec3<f32> = rayOrigin + rayDirection * closestObject.distance;
-        var normal = calcNormal(hitPoint, rotation);
+        var normal = calcNormal(hitPoint, params.cameraRotation);
         var lightPosition = vec3<f32>(2.0, 2.0, 4.0);
         var directionToLight = normalize(lightPosition - hitPoint);
 

@@ -1,5 +1,12 @@
-import { BufferDataType, Camera, CameraControls, WebGPUBuffer, WebGPUContext } from '@donnerknalli/webgpu-utils';
-import { Vec2 } from 'wgpu-matrix';
+import {
+  BufferDataTypeKind,
+  Camera,
+  CameraControls,
+  ScalarType,
+  WebGPUBuffer,
+  WebGPUContext,
+} from '@donnerknalli/webgpu-utils';
+import { Vec2, vec3 } from 'wgpu-matrix';
 
 import { WebGPUBindGroup } from './webgpubindgroup';
 import { WebGPUBindGroupLayout } from './webgpubindgrouplayout';
@@ -20,7 +27,6 @@ export class WebGPURenderer {
   private depthTargetView!: GPUTextureView;
   private currentTime = 0;
   private renderPipeline!: WebGPURenderPipeline;
-  // private computePipeline: GPUComputePipeline;
 
   private uniformParamsBuffer!: WebGPUBuffer;
   private uniformParamsGroup!: WebGPUBindGroup;
@@ -32,6 +38,7 @@ export class WebGPURenderer {
     this.canvas = canvas;
     this.webGPUContext = new WebGPUContext(canvas);
     this.camera = new Camera(45, canvas.width / canvas.height, 0.1, 1000);
+    this.camera.translate(vec3.create(0, 0, 5));
     new CameraControls(canvas, this.camera);
   }
 
@@ -43,22 +50,24 @@ export class WebGPURenderer {
     );
     this.uniformParamsBuffer.setData('resolution', {
       data: this.resolution,
-      dataType: BufferDataType.Vec2OfFloat32,
+      dataType: { elementType: ScalarType.Float32, bufferDataTypeKind: BufferDataTypeKind.Vec2 },
     });
 
     this.uniformParamsBuffer.setData('cameraPosition', {
-      data: this.camera.position,
-      dataType: BufferDataType.Vec3OfFloat32,
+      data: this.camera.eye,
+      dataType: { elementType: ScalarType.Float32, bufferDataTypeKind: BufferDataTypeKind.Vec3 },
     });
 
     this.uniformParamsBuffer.setData('cameraRotation', {
-      data: this.camera.rotation,
-      dataType: BufferDataType.Vec2OfFloat32,
+      //data: this.camera.rotation,
+      // Fixme: camera rotation
+      data: this.camera.viewMatrix,
+      dataType: { elementType: ScalarType.Float32, bufferDataTypeKind: BufferDataTypeKind.Mat4x4 },
     });
 
     this.uniformParamsBuffer.setData('time', {
-      data: new Float32Array([this.time]),
-      dataType: BufferDataType.Float32,
+      data: this.time,
+      dataType: { elementType: ScalarType.Float32, bufferDataTypeKind: BufferDataTypeKind.Scalar },
     });
 
     this.uniformParamsBuffer.writeBuffer();
@@ -111,6 +120,8 @@ export class WebGPURenderer {
       this.canvas.height = newHeight;
       this.presentationSize = { width: newWidth, height: newHeight, depthOrArrayLayers: this.depthOrArrayLayers };
       this.reCreateRenderTargets();
+
+      this.uniformParamsBuffer.writeBuffer();
     }
   }
 
@@ -185,6 +196,8 @@ export class WebGPURenderer {
     this.currentTime = beginFrameTime;
 
     this.time += duration / 1000;
+
+    this.uniformParamsBuffer.writeBuffer();
 
     this.render(duration);
     window.requestAnimationFrame(this.update);
