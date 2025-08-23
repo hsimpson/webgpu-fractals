@@ -59,8 +59,6 @@ export class WebGPURenderer {
     });
 
     this.uniformParamsBuffer.setData('cameraRotation', {
-      //data: this.camera.rotation,
-      // Fixme: camera rotation
       data: this.camera.viewMatrix,
       dataType: { elementType: ScalarType.Float32, bufferDataTypeKind: BufferDataTypeKind.Mat4x4 },
     });
