@@ -18,19 +18,18 @@ export class WebGPURenderer {
   private readonly webGPUContext: WebGPUContext;
   private presentationSize!: GPUExtent3DDict;
   private readonly depthOrArrayLayers = 1;
-  private sampleCount = 4;
+  private readonly sampleCount = 4;
 
   private renderTarget?: GPUTexture;
   private renderTargetView!: GPUTextureView;
 
-  private depthTarget?: GPUTexture;
-  private depthTargetView!: GPUTextureView;
   private currentTime = 0;
   private renderPipeline!: WebGPURenderPipeline;
 
   private uniformParamsBuffer!: WebGPUBuffer;
   private uniformParamsGroup!: WebGPUBindGroup;
-  private camera: Camera;
+  private readonly camera: Camera;
+  private readonly cameraControls: CameraControls;
   private resolution: Vec2 = new Float32Array([0, 0]);
   private time = 0;
 
@@ -39,7 +38,7 @@ export class WebGPURenderer {
     this.webGPUContext = new WebGPUContext(canvas);
     this.camera = new Camera(45, canvas.width / canvas.height, 0.1, 1000);
     this.camera.translate(vec3.create(0, 0, 5));
-    new CameraControls(canvas, this.camera);
+    this.cameraControls = new CameraControls(canvas, this.camera);
   }
 
   private createUniformParamsBuffer() {
@@ -128,10 +127,6 @@ export class WebGPURenderer {
       this.renderTarget.destroy();
     }
 
-    if (this.depthTarget) {
-      this.depthTarget.destroy();
-    }
-
     /* render target */
     this.renderTarget = this.webGPUContext.device.createTexture({
       size: this.presentationSize,
@@ -140,15 +135,6 @@ export class WebGPURenderer {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
     this.renderTargetView = this.renderTarget.createView();
-
-    /* depth target */
-    this.depthTarget = this.webGPUContext.device.createTexture({
-      size: this.presentationSize,
-      sampleCount: this.sampleCount,
-      format: 'depth24plus-stencil8',
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-    this.depthTargetView = this.depthTarget.createView();
   }
 
   private async initializeResources() {
@@ -192,7 +178,7 @@ export class WebGPURenderer {
     this.update();
   }
 
-  private update = () => {
+  private readonly update = () => {
     const beginFrameTime = performance.now();
     const duration = beginFrameTime - this.currentTime;
     this.currentTime = beginFrameTime;
@@ -203,12 +189,9 @@ export class WebGPURenderer {
 
     this.render(duration);
     window.requestAnimationFrame(this.update);
-    // const endFrameTime = performance.now();
-    // const _frameDuration = endFrameTime - beginFrameTime;
   };
 
   private render(_deltaTime: number) {
-    // this.computePass(deltaTime);
     this.renderPass();
   }
 
@@ -219,6 +202,7 @@ export class WebGPURenderer {
     let view: GPUTextureView;
     let resolveTarget: GPUTextureView | undefined;
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (this.sampleCount > 1) {
       view = this.renderTargetView;
       resolveTarget = this.webGPUContext.gpuCanvasContext.getCurrentTexture().createView();
@@ -230,17 +214,6 @@ export class WebGPURenderer {
       colorAttachments: [
         { view, resolveTarget, clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }, loadOp: 'clear', storeOp: 'discard' },
       ],
-      // depthStencilAttachment: {
-      //   view: this.depthTargetView,
-
-      //   depthLoadOp: 'clear',
-      //   depthClearValue: 1.0,
-      //   depthStoreOp: 'store',
-
-      //   stencilLoadOp: 'clear',
-      //   stencilClearValue: 0,
-      //   stencilStoreOp: 'store',
-      // },
     };
 
     const commandEncoder = this.webGPUContext.device.createCommandEncoder();
@@ -252,13 +225,4 @@ export class WebGPURenderer {
 
     this.webGPUContext.queue.submit([commandEncoder.finish()]);
   }
-
-  // private computePass(deltaTime: number) {
-  //   const commandEncoder = this.context.device.createCommandEncoder();
-  //   const passEncoder = commandEncoder.beginComputePass();
-  //   passEncoder.setPipeline(this.computePipeline);
-
-  //   passEncoder.end();
-  //   this.context.queue.submit([commandEncoder.finish()]);
-  // }
 }

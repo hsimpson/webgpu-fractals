@@ -9,8 +9,8 @@
     "build": "vite build --emptyOutDir",
     "deploy": "yarn lint && yarn format:check && yarn build",
     "check-types": "tsc --noemit",
-    "lint:ts": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint:ts": "eslint . --concurrency auto",
+    "lint:fix": "eslint . --fix --concurrency auto",
     "lint": "yarn check-types && yarn lint:ts",
     "format:check": "prettier . --check",
     "format:fix": "prettier . --write"
@@ -38,7 +38,7 @@
     "vite": "^7.1.4"
   },
   "dependencies": {
-    "@donnerknalli/webgpu-utils": "^0.0.3",
+    "@donnerknalli/webgpu-utils": "^0.0.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "wgpu-matrix": "^3.4.0"
