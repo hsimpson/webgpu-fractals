@@ -3,10 +3,10 @@ struct FragmentOutput {
 }
 
 struct UBOParams {
-   resolution: vec2<u32>,
-   cameraPosition: vec3<f32>,
-   cameraRotation: vec2<f32>,
-   time: f32,
+    resolution: vec2<f32>,
+    cameraPosition: vec3<f32>,
+    cameraRotation: mat3x3<f32>,
+    time: f32,
 }
 
 @group(0) @binding(0) var<uniform> params: UBOParams;
@@ -223,13 +223,12 @@ fn main(@builtin(position) coord: vec4<f32>) -> FragmentOutput {
     // coord is the interpolated position of the current fragment
     // coord.xy is the pixel coordinate of the current fragment (0,0 top left and bottom right is viewport width, viewport height)
     var fragCoord = coord.xy;
-    var resolution = vec2<f32>(params.resolution);
    
     // correction of uv coordinates depending on resolutions
     // var uv = (fragCoord-.5*resolution.xy)/resolution.y;
-    var uv = fragCoord / resolution.xy; // [0, 1]
+    var uv = fragCoord / params.resolution.xy; // [0, 1]
     uv -= 0.5; // [-0.5, 0.5]
-    uv.x *= resolution.x / resolution.y; // [-0.5 * aspectRatio, 0.5 * aspectRatio]
+    uv.x *= params.resolution.x / params.resolution.y; // [-0.5 * aspectRatio, 0.5 * aspectRatio]
     uv.y = -uv.y; // flip y axis
 
     // var cameraPosition = vec3<f32>(0.0, 0.0, 5.0);
@@ -239,15 +238,15 @@ fn main(@builtin(position) coord: vec4<f32>) -> FragmentOutput {
 
     var color = vec3<f32>(0.0, 0.0, 0.0);
 
-    let rotation = rotateX(params.cameraRotation.x) * rotateY(params.cameraRotation.y) * rotateZ(0.0);
-    let closestObject = rayMarch(rayOrigin, rayDirection, MIN_DIST, MAX_DIST, rotation);
+    //let rotation = rotateX(params.cameraRotation.x) * rotateY(params.cameraRotation.y) * rotateZ(0.0);
+    let closestObject = rayMarch(rayOrigin, rayDirection, MIN_DIST, MAX_DIST, params.cameraRotation);
     if closestObject.distance > MAX_DIST {
         // no hit
         color = backgroundColor;
     } else {
         // hit
         var hitPoint: vec3<f32> = rayOrigin + rayDirection * closestObject.distance;
-        var normal = calcNormal(hitPoint, rotation);
+        var normal = calcNormal(hitPoint, params.cameraRotation);
         var lightPosition = vec3<f32>(2.0, 2.0, 4.0);
         var directionToLight = normalize(lightPosition - hitPoint);
 
