@@ -4,15 +4,15 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "jsx": "react",
-    "lib": ["DOM", "ES2022"],
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "lib": ["DOM", "ESNext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "ES2022",
+    "target": "ES2024",
     "typeRoots": ["./src/@types", "./node_modules/@webgpu/types", "node_modules/@types"]
   }
 }

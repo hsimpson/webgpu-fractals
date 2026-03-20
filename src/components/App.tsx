@@ -1,5 +1,4 @@
 import { WebGPUContext } from '@donnerknalli/webgpu-utils';
-import React from 'react';
 import NoWebGPU from './NoWebGPU';
 import Renderer from './Renderer';
 
