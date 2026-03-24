@@ -2,17 +2,17 @@ import { useEffect, useRef } from 'react';
 import { WebGPURenderer } from '../webgpu';
 
 const Renderer = () => {
-  const canvasEl = useRef<HTMLCanvasElement>(null);
-  const webGPURender = useRef<WebGPURenderer | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const webGPURendererRef = useRef<WebGPURenderer | null>(null);
 
   useEffect(() => {
-    if (canvasEl.current && !webGPURender.current) {
-      webGPURender.current = new WebGPURenderer(canvasEl.current);
-      void webGPURender.current.start();
+    if (canvasRef.current && !webGPURendererRef.current) {
+      webGPURendererRef.current = new WebGPURenderer(canvasRef.current);
+      void webGPURendererRef.current.start();
     }
   }, []);
 
-  return <canvas className="h-full w-full" ref={canvasEl} />;
+  return <canvas className="h-full w-full" ref={canvasRef} />;
 };
 
 export default Renderer;
