@@ -20,7 +20,6 @@ export default defineConfig(
   // configuration for rules that require type information
   {
     languageOptions: {
-      // ...reactPlugin.configs.flat.recommended.languageOptions,
       parserOptions: {
         projectService: true,
       },
