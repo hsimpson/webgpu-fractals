@@ -41,11 +41,11 @@ export class WebGPURenderer {
   }
 
   private createUniformParamsBuffer() {
-    this.uniformParamsBuffer = new WebGPUBuffer(
-      this.webGPUContext,
-      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      'uniformBuffer',
-    );
+    this.uniformParamsBuffer = new WebGPUBuffer({
+      webGPUContext: this.webGPUContext,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      label: 'Uniform Params Buffer',
+    });
     this.uniformParamsBuffer.setData('resolution', {
       data: this.resolution,
       dataType: { elementType: ScalarType.Float32, bufferDataTypeKind: BufferDataTypeKind.Vec2 },
@@ -142,32 +142,49 @@ export class WebGPURenderer {
   }
 
   private async initializeResources() {
-    const bindGroupLayout = new WebGPUBindGroupLayout(this.webGPUContext, [
-      { binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
-    ]);
+    const bindGroupLayout = new WebGPUBindGroupLayout({
+      webGPUContext: this.webGPUContext,
+      label: 'uniform_params_bind_group_layout',
+      bindGroupLayoutEntries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }],
+    });
     bindGroupLayout.createBindGroupLayout();
 
-    this.uniformParamsGroup = new WebGPUBindGroup(this.webGPUContext, bindGroupLayout, [
-      { binding: 0, resource: { buffer: this.uniformParamsBuffer.getRawBuffer() } },
-    ]);
+    this.uniformParamsGroup = new WebGPUBindGroup({
+      webGPUContext: this.webGPUContext,
+      bindGroupLayout,
+      bindGroupEntries: [{ binding: 0, resource: { buffer: this.uniformParamsBuffer.getRawBuffer() } }],
+      label: 'uniform_params_bind_group',
+    });
     this.uniformParamsGroup.createBindGroup();
 
-    const pipelineLayout = new WebGPUPipelineLayout(this.webGPUContext, [bindGroupLayout]);
+    const pipelineLayout = new WebGPUPipelineLayout({
+      webGPUContext: this.webGPUContext,
+      label: 'main_pipeline_layout',
+      bindGroupLayouts: [bindGroupLayout],
+    });
     pipelineLayout.createPipelineLayout();
 
-    const vertexShader = new WebGPUShader(
-      this.webGPUContext,
-      new URL('./shaders/basic.vert.wgsl', window.location.href),
-    );
+    const vertexShader = new WebGPUShader({
+      webGPUContext: this.webGPUContext,
+      label: 'vertex_shader',
+      source: new URL('./shaders/basic.vert.wgsl', window.location.href),
+    });
     await vertexShader.createShaderModule();
 
-    const fragmentShader = new WebGPUShader(
-      this.webGPUContext,
-      new URL('./shaders/basic.frag.wgsl', window.location.href),
-    );
+    const fragmentShader = new WebGPUShader({
+      webGPUContext: this.webGPUContext,
+      label: 'fragment_shader',
+      source: new URL('./shaders/basic.frag.wgsl', window.location.href),
+    });
     await fragmentShader.createShaderModule();
 
-    this.renderPipeline = new WebGPURenderPipeline(this.webGPUContext, pipelineLayout, vertexShader, fragmentShader);
+    this.renderPipeline = new WebGPURenderPipeline({
+      webGPUContext: this.webGPUContext,
+      label: 'main_render_pipeline',
+      pipelineLayout,
+      vertexShader,
+      fragmentShader,
+    });
     this.renderPipeline.addColorTargetState({ format: this.webGPUContext.preferredCanvasFormat });
     this.renderPipeline.setPrimitiveState({ topology: 'triangle-list' });
     this.renderPipeline.setMultisampleState({ count: this.sampleCount });
@@ -222,8 +239,8 @@ export class WebGPURenderer {
 
     const commandEncoder = this.webGPUContext.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass(renderPassDesc);
-    passEncoder.setPipeline(this.renderPipeline.renderPipeLine);
-    passEncoder.setBindGroup(0, this.uniformParamsGroup.bindGroup);
+    passEncoder.setPipeline(this.renderPipeline.getRawRenderPipeline());
+    passEncoder.setBindGroup(0, this.uniformParamsGroup.getRawBindGroup());
     passEncoder.draw(3, 1, 0, 0); // only 1 triangle
     passEncoder.end();
 
