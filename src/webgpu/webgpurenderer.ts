@@ -29,7 +29,6 @@ export class WebGPURenderer {
   private uniformParamsBuffer!: WebGPUBuffer;
   private uniformParamsGroup!: WebGPUBindGroup;
   private readonly camera: Camera;
-  private readonly cameraControls: CameraControls;
   private resolution: Vec2 = new Float32Array([0, 0]);
   private time = 0;
 
@@ -38,7 +37,7 @@ export class WebGPURenderer {
     this.webGPUContext = new WebGPUContext(canvas);
     this.camera = new Camera(45, canvas.width / canvas.height, 0.1, 1000);
     this.camera.translate(vec3.create(0, 0, 5));
-    this.cameraControls = new CameraControls(canvas, this.camera);
+    new CameraControls(canvas, this.camera);
   }
 
   private createUniformParamsBuffer() {
@@ -100,14 +99,19 @@ export class WebGPURenderer {
         return;
       }
 
-      this.resize(new Float32Array([entries[0].contentRect.width, entries[0].contentRect.height]));
+      const [entry] = entries;
+      if (!entry) return;
+
+      this.resize(new Float32Array([entry.contentRect.width, entry.contentRect.height]));
     });
     resizeObserver.observe(this.canvas);
   }
 
   private resize(newResolution: Vec2) {
-    const newWidth = newResolution[0] * window.devicePixelRatio;
-    const newHeight = newResolution[1] * window.devicePixelRatio;
+    const [resX, resY] = newResolution;
+    if (resX === undefined || resY === undefined) return;
+    const newWidth = resX * window.devicePixelRatio;
+    const newHeight = resY * window.devicePixelRatio;
 
     if (newWidth !== this.presentationSize.width || newHeight !== this.presentationSize.height) {
       this.resolution[0] = newWidth;
